@@ -4,10 +4,17 @@
 class CCharClient : public CTitanClient
 {	
 public:
-	CCharClient( ){ }
-	~CCharClient( ){ }
+	CCharClient( ):username(NULL),id(-1),loginid(-1),accesslevel(-1){ }
+	~CCharClient( ){
+		if(username != NULL)
+			free(username);
+	}
 
 	dword xorTableLoc;
+	char* username;
+	int id;
+	int loginid;
+	int accesslevel;
 private:
 };
 
@@ -33,6 +40,7 @@ public:
 			pak->Set<byte>(0, 0, 0);
 			memcpy(pak->Buffer() + 3, pak->Buffer() + 1, pak->Size() - 1);
 			pak->Set<word>(pak->Size() -  1, 1, 0);
+			pak->Size(pak->Size() + 3);
 		}else{
 			pak->Set<byte>(pak->Size() - 1,0,0);
 		}
@@ -68,6 +76,7 @@ public:
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 	PACKETHANDLER(pakUserLogin);
 	PACKETHANDLER(pakCharList);
+	PACKETHANDLER(pakCreateChar);
 
 	CServerData* GetServerByID(dword id){		
 		CServerData* retServ = NULL;

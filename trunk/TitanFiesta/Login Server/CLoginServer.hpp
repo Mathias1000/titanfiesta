@@ -4,10 +4,19 @@
 class CLoginClient : public CTitanClient
 {	
 public:
-	CLoginClient( ){ }
-	~CLoginClient( ){ }
+	CLoginClient( ):username(NULL),password(NULL),id(-1),accesslevel(-1){ }
+	~CLoginClient( ){
+		if(username != NULL)
+			free(username);
+		DELARR(password);
+	}
 
 	dword xorTableLoc;
+	char* username;
+	char* password;
+	int id;
+	int accesslevel;
+	int loginid;
 private:
 };
 
@@ -70,6 +79,7 @@ public:
 
 	PACKETHANDLER(pakTokenLogin);
 	PACKETHANDLER(pakJoinServer);
+	PACKETHANDLER(pakPing);
 
 	CServerData* GetServerByID(dword id){		
 		CServerData* retServ = NULL;

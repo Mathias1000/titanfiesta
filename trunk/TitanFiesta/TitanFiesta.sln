@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Fiesta Proxy", "Fiesta Prox
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Char Server", "Char Server\Char Server.vcproj", "{0DA1F230-E087-4643-BB98-6FBBC6065945}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SHN Decrypter", "SHN Decrypter\SHN Decrypter.vcproj", "{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -25,6 +27,10 @@ Global
 		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Debug|Win32.Build.0 = Debug|Win32
 		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Release|Win32.ActiveCfg = Release|Win32
 		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Release|Win32.Build.0 = Release|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Debug|Win32.Build.0 = Debug|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Release|Win32.ActiveCfg = Release|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

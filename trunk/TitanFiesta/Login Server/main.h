@@ -8,6 +8,7 @@
 #define TITAN_USING_ISC
 #define TITAN_USING_INIREAD
 #define TITAN_USING_MYSQL
+#define TITAN_USING_RANDOM
 
 //Packet Setting
 #define TITAN_USING_PACKETS

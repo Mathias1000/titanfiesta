@@ -1,11 +1,14 @@
 #include "main.h"
 #include "CLoginServer.hpp"
 
+CRandomMersenne rg((int32)time(0));
+
 bool CLoginServer::OnServerReady(){
 	CTitanIniReader ini("LoginServer.ini");
-	db = new CTitanSQL(ini.GetString("Server","MySQL","127.0.0.1"), ini.GetString("Username","MySQL","root"), ini.GetString("Password","MySQL",""), ini.GetString("Database","MySQL","rose"));
+	db = new CTitanSQL(ini.GetString("Server","MySQL","127.0.0.1"), ini.GetString("Username","MySQL","root"), ini.GetString("Password","MySQL",""), ini.GetString("Database","MySQL","titanfiesta"));
 	if(!db->Connect()){
 		Log(MSG_STATUS, "Failed to connect to MYSQL Server");
+		return false;
 	}else{
 		Log(MSG_STATUS, "Connected to MYSQL Server");
 	}
@@ -44,6 +47,9 @@ void CLoginServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak 
 		case 0xC0B:
 			PACKETRECV(pakJoinServer);
 		break;
+		case 0xC1B:
+			PACKETRECV(pakPing);
+		break;
 		default:
 			pak->Pos(0);
 			printf("Unhandled Packet, Command: %04x Size: %04x:\n", pak->Command(), pak->Size());
@@ -54,6 +60,21 @@ void CLoginServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak 
 	}
 }
 
+PACKETHANDLER(pakPing){
+	/*CPacket pakout(0xC1C);
+	pakout.AddFixLenStr("TitanFiesta", 0x12);
+	rwmServerList.acquireReadLock();
+	pakout.Add<byte>(ServerList.size());
+	for(dword i = 0; i < ServerList.size(); i++){
+		pakout.Add<byte>(ServerList[i]->id);
+		pakout.AddFixLenStr(ServerList[i]->name, 0x10);
+		pakout.Add<byte>(ServerList[i]->status);
+	}
+	rwmServerList.releaseReadLock();
+	SendPacket(thisclient, &pakout);*/
+	return true;
+}
+
 PACKETHANDLER(pakJoinServer){
 	byte serverId = pak->Read<byte>();
 	CServerData* srv = GetServerByID(serverId);
@@ -61,43 +82,69 @@ PACKETHANDLER(pakJoinServer){
 		Log(MSG_ERROR, "Invalid server id for joining");
 		return false;
 	}
+
+	thisclient->loginid = rg.IRandom(1, 1337);
+	db->DoSQL("UPDATE `users` SET `loginid`='%d' WHERE `id`='%d'", thisclient->loginid, thisclient->id);
+
 	CPacket pakout(0xC0C);
 	pakout.Add<byte>(strlen(srv->ip));
-	pakout.AddBytes((byte*)srv->ip, strlen(srv->ip));
-	pakout.Add<byte>(0);
+	pakout.Add<string>(srv->ip);
 	pakout.Add<dword>(0);
 	pakout.Add<word>(0);
 	pakout.Add<word>(srv->port);
-	pakout.Add<word>(0x02C2);//Special Login ID
+	pakout.Add<word>(thisclient->loginid);//Special Login ID
 	SendPacket(thisclient, &pakout);
 	return true;
 }
 
 PACKETHANDLER(pakTokenLogin){
-	char token[64];
+	char md5hash[33];
 	char username[0x12];
-	char servername[0x12];
-	strcpy_s(token, 64, reinterpret_cast<char*>(pak->Buffer() + 3));
+	md5hash[32] = 0;
+	memcpy(md5hash, pak->Buffer() + 3, 32);
+	strcpy_s(username, 0x12, (const char*)pak->Buffer() + 3 + 32);
 
-	//04 09 0c 44 00 fail login.
-	Log(MSG_DEBUG, "Login token: %s", token);
-
-	memset(username, 0, 0x12);
-	memcpy(username, "ExJam", strlen("ExJam"));
-
-	CPacket pakout(0xC0A);
-	pakout.AddBytes(reinterpret_cast<byte*>(username), 0x12);
-	rwmServerList.acquireReadLock();
-	pakout.Add<byte>(ServerList.size());
-	for(dword i = 0; i < ServerList.size(); i++){
-		pakout.Add<byte>(ServerList[i]->id);
-		memset(servername, 0, 0x10);
-		memcpy(servername, ServerList[i]->name, strlen(ServerList[i]->name));
-		pakout.AddBytes(reinterpret_cast<byte*>(servername), 0x10);
-		pakout.Add<byte>(ServerList[i]->status);
+	thisclient->username = db->MakeSQLSafe(username);
+	thisclient->password = _strdup(md5hash);
+	if(_strcmpi(thisclient->username, username)){
+		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->username, username);
+		return false;
 	}
-	rwmServerList.releaseReadLock();
-	SendPacket(thisclient, &pakout);
+	MYSQL_RES* result = db->DoSQL("SELECT `id`,`password`,`accesslevel` FROM `users` WHERE `username`='%s'", thisclient->username);
+	if(!result || mysql_num_rows(result) != 1){
+		Log(MSG_DEBUG, "SELECT returned bollocks");
+		goto authFail;
+	}
+	
+	MYSQL_ROW row = mysql_fetch_row(result);
+	if(strcmp(row[1], (const char*)thisclient->password) != 0){
+		Log(MSG_DEBUG, "Incorrect password");
+		goto authFail;
+	}
+
+	thisclient->id = atoi(row[0]);
+	thisclient->accesslevel = atoi(row[2]);
+
+	if(thisclient->accesslevel < 1){
+		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
+		goto authFail;
+	}
+
+	Log(MSG_DEBUG, "User %s authenticated", username);
+
+	{
+		CPacket pakout(0xC0A);
+		pakout.AddFixLenStr(username, 0x12);
+		rwmServerList.acquireReadLock();
+		pakout.Add<byte>(ServerList.size());
+		for(dword i = 0; i < ServerList.size(); i++){
+			pakout.Add<byte>(ServerList[i]->id);
+			pakout.AddFixLenStr(ServerList[i]->name, 0x10);
+			pakout.Add<byte>(ServerList[i]->status);
+		}
+		rwmServerList.releaseReadLock();
+		SendPacket(thisclient, &pakout);
+	}
 
 	/*
 	STATUS
@@ -113,6 +160,13 @@ PACKETHANDLER(pakTokenLogin){
 	9 = low
 	10 = medium
 	*/
+	return true;
+authFail:
+	{
+		CPacket pakout(0x0C09);
+		pakout.Add<word>(0x44);
+		SendPacket(thisclient, &pakout);
+	}
 	return true;
 }
 
