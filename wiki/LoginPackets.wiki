@@ -9,4 +9,4 @@
 
   * [More Packets Here]
 
-Just testing is adding a wiki page changes revision in SVN, someone bitched it did with OSRose
+ok, Adding a new page changes revision (WHo cares? Revision doesn't matter :))
