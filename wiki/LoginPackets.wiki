@@ -1,0 +1,12 @@
+#summary Packets the login server uses.
+
+== Incoming Packets ==
+
+  * [Packet List Here]
+ 
+
+== Outgoing Packets ==
+
+  * [More Packets Here]
+
+Just testing is adding a wiki page changes revision in SVN, someone bitched it did with OSRose
