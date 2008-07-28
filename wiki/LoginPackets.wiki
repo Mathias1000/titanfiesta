@@ -10,3 +10,4 @@
   * [More Packets Here]
 
 ok, Adding a new page changes revision (WHo cares? Revision doesn't matter :))
+Also updating a page changes revision, that's pretty lame ;) But still doesn't matter
