@@ -1,0 +1,19 @@
+85 - Size
+47 10 - Cmd
+0d - Entry Count
+09 05 00 90 - Data, not sure on what it does :/
+ac 0d 1e 05 01 90 
+b1 0d 16 05 02 90 
+c9 09 01 05 03 90 
+ca 09 06 05 04 90 
+8d 0e 02 05 05 90 
+ac 0d 04 05 08 90 
+b0 0b 08 0c 12 90 
+Hobby Horse
+[word - ItemID] [Expiry Info] [byte Sep]
+d2 94 64 00 08 88 a0 66 00 00 31 13 90 
+94 11 00 00 00 ff ff 00 00 00 00 ff ff 00 00 00 00 ff ff 00 00 00 00 ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 05 16 90 
+b1 0b 0c 05 17 90 
+c5 0b 08 05 1e 90 
+ff 0b 02 05 2f 90 
+40 1f 02 

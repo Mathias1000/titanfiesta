@@ -68,49 +68,77 @@ PACKETHANDLER(pakCreateChar){
 	byte hairColour = pak->Get<byte>(0x15, 0);
 	byte faceStyle = pak->Get<byte>(0x16, 0);
 	Log(MSG_DEBUG, "IsMale: %d, Prof: %d, Hair: %d, Colour: %d, Face: %d", isMale, profession, hairStyle, hairColour, faceStyle);
+	
+	// Check for existing character
+	MYSQL_RES* result = db->DoSQL("SELECT `charname` FROM `characters` WHERE `charname`='%s'", name);
+	if(mysql_num_rows(result) > 0){
+		Log(MSG_DEBUG, "Characters already exists");
+
+		CPacket pakout(0x1404);
+		pakout.Add<byte>(0x81);
+		pakout.Add<byte>(0x01);
+		SendPacket(thisclient, &pakout);
+
+		return false;
+	}
+
+	// Add use to Characters table, woo.
+	db->DoSQL("INSERT INTO `characters` (`owner`, `charname`, `profession`, `ismale`, `hair`, `haircolor`, `face`) values \
+			  ('%s', '%s', %u, %u, %u, %u, %u)", thisclient->username, name, profession, isMale, hairStyle, hairColour, faceStyle);
+
+	CPacket pakout(0x1406);
+	pakout.Add<byte>(0x01); // Slot?
+	pakout.Add<byte>(0x99); // Unk
+	SendPacket(thisclient, &pakout);
 
 	return true;
 }
 
 PACKETHANDLER(pakCharList){
+	// Select characters
+	MYSQL_RES* result = db->DoSQL("SELECT `charname`,`level`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face` FROM `characters` WHERE `owner`='%s'", thisclient->username);
+	if(!result){
+		Log(MSG_DEBUG, "SELECT returned bollocks");
+		return false;
+	}
+	
+	MYSQL_ROW row;
+	dword slot = 0;
+
 	CPacket pakout(0xC14);
-	pakout.Add<word>(0xd1c0); // Unk [Changes every login]
-	pakout.Add<byte>(0x01); // Num of chars
-	{
-		pakout.Add<word>(0x3f52); // unk [Stays the same]
+
+	pakout.Add<word>(0x0000); // Unk [Changes every login]
+	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
+	while (row = mysql_fetch_row(result)) {
+		pakout.Add<word>(rand() & 0xFFFF); // unk [Stays the same]
 		pakout.Add<word>(0x000f); // Name length (Always 16?)
-		pakout.AddFixLenStr("ExJam", 0x10); // Name
-		pakout.Add<word>(0x03); // Level
-		pakout.Add<byte>(0x03); // Char slot
-		pakout.AddFixLenStr("GoldCave", 0x0D); // Current town (map folder name)
-		pakout.Add<dword>(0x00); // Unk [Changes every login]
-		pakout.Add<byte>(0x05 | 0x80);//Prof [0x05 (Fighter)] & Gender [0x80 (Male)]
-		pakout.Add<byte>(0x00);//Hair Style
-		pakout.Add<byte>(0x02);//Hair Colour
-		pakout.Add<byte>(0x00);//Face Style
+		pakout.AddFixLenStr(row[0], 0x10); // Name
+		pakout.Add<word>(atoi(row[1])); // Level
+		pakout.Add<byte>(slot); // Char slot
+		pakout.AddFixLenStr(row[2], 0x0D); // Current town (map folder name)
+		pakout.Add<dword>(rand()); // Unk [Changes every login]
+		pakout.Add<byte>(atoi(row[3]) | (atoi(row[4]) << 7));//Prof | Gender
+		pakout.Add<byte>(atoi(row[5]));//Hair Style
+		pakout.Add<byte>(atoi(row[6]));//Hair Colour
+		pakout.Add<byte>(atoi(row[7]));//Face Style
 		// Armor
 		pakout.Add<word>(0x00FC); //Weapon [Not Shown]
-		pakout.Add<dword>(0x0003);//Body Armour
+		pakout.Add<word>(0x0003);//Body Armour
 		pakout.Add<word>(0x00C9); //Shield [Not Shown]
 		pakout.Add<word>(0x0002); //Leg Armour
 		pakout.Add<word>(0x0004); //Boot Armour
 		pakout.Fill<byte>(0xFF, 0x1C);
-		pakout.Add<word>(0x0);
+		pakout.Add<word>(0x0); // 0x60 on my main char
 		pakout.Add<byte>(0xf0);
 		pakout.Add<dword>(0xffffffff);
-		pakout.Add<byte>(0x52);
-		pakout.Add<byte>(0x6F);
-		pakout.Add<byte>(0x75);
-		pakout.Add<dword>(0x00000000);
-		pakout.Add<dword>(0x00000000);
-		pakout.Add<byte>(0x00);
-		pakout.Add<word>(0x0cdc); // Pos?
-		pakout.Add<word>(0x0000);
-		pakout.Add<word>(0x1bc9); // Pos?
-		pakout.Add<word>(0x0000);
-		pakout.Add<word>(0xdb78);
-		pakout.Add<word>(0xc315); // Unique Key
+		pakout.Fill<byte>(0x00, 12);
+		pakout.Add<dword>(0x0cdc); // Pos?
+		pakout.Add<dword>(0x1bc9); // Pos?
+		pakout.Add<word>(0xdb78); // ?
+		pakout.Add<word>(0xc315); // ?
+		slot++;
 	}
+
 	SendPacket(thisclient, &pakout);
 	return true;
 }

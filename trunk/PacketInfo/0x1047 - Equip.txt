@@ -1,0 +1,14 @@
+95 - Size
+47 10 - Cmd
+09 - Entry Count
+08 0c 01 80 - Data, not sure on what it does :/
+01 00 00 00 00 00 00 00 00 01 09 06 80 - Helmet
+d8 a4 00 00 00 00 01 0c 07 80 - Necklace
+03 00 00 00 00 00 00 00 00 01 0c 0a 80 - Shirt
+c9 00 00 00 00 00 00 00 00 01 31 0c 80 - Shield
+Sword is title'd, tagged with "Drakia" to indicate original titler
+fc 00 06 00 00 08 00 00 00 00 00 0c 00 00 00 00 00 ff ff 00 00 00 00 ff ff 44 72 61 6b 69 61 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 09 0f 80 - Sword + 6
+11 a4 00 00 00 00 01 09 10 80 - Right Right
+34 08 00 00 00 00 00 0c 13 80 - Ring Left
+02 00 00 00 00 00 00 00 00 01 0c 15 80 - Pants
+04 00 00 00 00 00 00 00 00 01 - Boots
