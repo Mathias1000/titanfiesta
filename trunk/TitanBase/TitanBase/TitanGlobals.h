@@ -266,4 +266,7 @@ struct CVector2D
 #ifdef TITAN_USING_FPOINT
 # include "TitanFPoint.hpp"
 #endif
+#ifdef TITAN_USING_RANDOM
+# include "randomc.h"
+#endif
 #include "TitanBase.h"

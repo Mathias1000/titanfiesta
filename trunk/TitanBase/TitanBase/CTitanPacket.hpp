@@ -53,9 +53,38 @@ public:
 #endif
 	}
 
+	template <typename T> inline void AddStringLen(char* val){
+		Add<T>(strlen(val));
+		AddString(val);
+	}
+
+	inline void AddStringNull(char* val){
+		AddString(val);
+		Add<byte>(0);
+	}
+
+	void AddString(char* val){
+		for(dword i = 0; i < strlen(val); i++)
+			Add<byte>((byte)val[i]);
+	}
+
 	void AddBytes(byte* val, dword len){
 		for(dword i = 0; i < len; i++)
 			Add<byte>((byte)val[i]);
+	} 
+	
+	void AddFixLenStr(char* str, int len){
+		int strleng = strlen(str);
+		if(strleng > len){
+			for(int i = 0; i < len; i++)
+				Add<byte>((byte)str[i]);
+			return;
+		}
+		for(int i = 0; i < strleng; i++)
+			Add<byte>((byte)str[i]);
+		int extra = len - strleng;
+		if(extra > 0)
+			Fill<byte>(0, extra);
 	}
 
 #ifdef TITAN_USING_ISC
