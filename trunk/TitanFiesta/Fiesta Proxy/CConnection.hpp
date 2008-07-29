@@ -1,7 +1,9 @@
 class CConnection {
 public:
-	CConnection(){disconnect = false;xorTableLoc=0;}
+	CConnection(char* name):serverName(name),disconnect(false),xorTableLoc(0){}
 	~CConnection(){}
+
+	char* serverName;
 
 
 	bool WaitConnection(char* ip, dword port){
@@ -52,6 +54,7 @@ public:
 		if(length >= 3){
 			pak.command = *reinterpret_cast<word*>(pak.buffer + 1);
 			if(pak.command == 0x0C0C){
+				strcpy_s(charServerIP, 32, pak.buffer + 4);
 				memcpy(pak.buffer + 4, "127.0.0.1", strlen("127.0.0.1"));
 				pak.buffer[0x0d] = 0;
 				pak.buffer[0x0e] = 0;
@@ -59,6 +62,7 @@ public:
 				StartCharServer();
 			}
 			if(pak.command == 0x1003){
+				strcpy_s(worldServerIP, 32, pak.buffer + 3);
 				memcpy(pak.buffer + 3, "127.0.0.1", strlen("127.0.0.1"));
 				pak.buffer[0x0c] = 0;
 				pak.buffer[0x0d] = 0;
@@ -74,7 +78,7 @@ public:
 	}
 
 	void SendServerPacket(CPacket* pak){
-		printf("> %02x ", (unsigned char)pak->buffer[0]);
+		printf("%sOUT %02x ", serverName, (unsigned char)pak->buffer[0]);
 		for(dword i = 1; i < pak->size; i++){
 			printf("%02x ", (unsigned char)(pak->buffer[i] ^ xorTable[xorTableLoc]));
 			xorTableLoc++;
@@ -85,12 +89,12 @@ public:
 	}
 
 	void SendClientPacket(CPacket* pak){
-		if(pak->command != 0x201a){
-			printf("< ");
-			for(dword i = 0; i < pak->size; i++)
-				printf("%02x ", (unsigned char)pak->buffer[i]);
-			printf("\n");
-		}
+		//if(pak->command != 0x201a){
+		printf("%sIN ", serverName);
+		for(dword i = 0; i < pak->size; i++)
+			printf("%02x ", (unsigned char)pak->buffer[i]);
+		printf("\n");
+		//}
 		send( NewSocket, pak->buffer, pak->size, 0 );
 	}
 

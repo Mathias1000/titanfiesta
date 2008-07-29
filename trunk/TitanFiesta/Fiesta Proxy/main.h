@@ -10,6 +10,9 @@ typedef unsigned __int64 qword;
 
 #include "XorTable.h"
 
+extern char charServerIP[32];
+extern char worldServerIP[32];
+
 #include <iostream>
 #include "CPacket.hpp"
 void StartCharServer();

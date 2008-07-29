@@ -5,6 +5,9 @@ CConnection* charServer;
 CConnection* worldServer;
 CURL *curl;
 
+char charServerIP[32];
+char worldServerIP[32];
+
 DWORD WINAPI loginServerThread(LPVOID lpParam){
 	loginServer->ServerThread();
 	return 0;
@@ -21,25 +24,22 @@ DWORD WINAPI worldServerThread(LPVOID lpParam){
 }
 
 DWORD WINAPI charServerWaitThread(LPVOID lpParam){
-	charServer = new CConnection();
-	printf("Waiting for 'Char Server' Connections\n");
+	charServer = new CConnection("[Char]");
 	if(!charServer->WaitConnection("127.0.0.1", 9110)){
-		printf("Couldnt wait for conections! :(\n");
-	};
+		printf("Couldnt wait for char server conections! :(\n");
+	}
 	return 0;
 }
 
 DWORD WINAPI worldServerWaitThread(LPVOID lpParam){
-	worldServer = new CConnection();
-	printf("Waiting for 'World Server' Connections\n");
+	worldServer = new CConnection("[Game]");
 	if(!worldServer->WaitConnection("127.0.0.1", 9120)){
-		printf("Couldnt wait for conections! :(\n");
+		printf("Couldnt wait for game server conections! :(\n");
 		return 0;
-	};
+	}
 
-	printf("Connecting to real third server..\n");
-	if(!worldServer->Connect("64.127.118.38", 9120, 0)){
-		printf("Couldnt connect to third server! :(\n");
+	if(!worldServer->Connect(worldServerIP, 9120, 0)){
+		printf("Couldnt connect to game server! :(\n");
 		return 0;
 	}
 
@@ -120,6 +120,8 @@ int main(int argc, char** argv){
 		goto finished;
 	}
 
+	printf("Starting game...\n");
+
 	{
 		char* pch = chunk.memory + strlen("{\"token\":\"");
 		char* pch2 = strchr(pch, '"'); *pch2 = 0;
@@ -133,15 +135,15 @@ int main(int argc, char** argv){
 	}
 
 	if(chunk.memory) free(chunk.memory);
+
+	printf("Waiting for connection...\n");
 	
-	loginServer = new CConnection();
-	printf("Waiting for a connection from client..\n");
+	loginServer = new CConnection("[Login]");
 	if(!loginServer->WaitConnection("127.0.0.1", 9010)){
-		printf("Couldnt wait for conections! :(\n");
+		printf("Couldnt wait for login conections! :(\n");
 		goto finished;
 	}
 
-	printf("Connecting to real login server..\n");
 	if(!loginServer->Connect("64.127.118.7", 9010, 0)){
 		printf("Couldnt connect to login server! :(\n");
 		goto finished;
@@ -152,8 +154,7 @@ int main(int argc, char** argv){
 
 	if(charServer == NULL) goto finished;
 
-	printf("Connecting to real char server..\n");
-	if(!charServer->Connect("64.127.118.8", 9110, 0)){
+	if(!charServer->Connect(charServerIP, 9110, 0)){
 		printf("Couldnt connect to char server! :(\n");
 		goto finished;
 	}
