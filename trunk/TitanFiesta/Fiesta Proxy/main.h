@@ -12,6 +12,7 @@ typedef unsigned __int64 qword;
 
 extern char charServerIP[32];
 extern char worldServerIP[32];
+extern word worldServerPort;
 
 #include <iostream>
 #include "CPacket.hpp"

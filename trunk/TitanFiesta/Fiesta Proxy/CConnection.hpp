@@ -55,19 +55,15 @@ public:
 			pak.command = *reinterpret_cast<word*>(pak.buffer + 1);
 			if(pak.command == 0x0C0C){
 				strcpy_s(charServerIP, 32, pak.buffer + 4);
+				memset(pak.buffer + 4, '\0', 0x10);
 				memcpy(pak.buffer + 4, "127.0.0.1", strlen("127.0.0.1"));
-				pak.buffer[0x0d] = 0;
-				pak.buffer[0x0e] = 0;
-				pak.buffer[0x0f] = 0;
 				StartCharServer();
 			}
 			if(pak.command == 0x1003){
 				strcpy_s(worldServerIP, 32, pak.buffer + 3);
+				memset(pak.buffer + 3, '\0', 0x10);
 				memcpy(pak.buffer + 3, "127.0.0.1", strlen("127.0.0.1"));
-				pak.buffer[0x0c] = 0;
-				pak.buffer[0x0d] = 0;
-				pak.buffer[0x0e] = 0;
-				pak.buffer[0x0f] = 0;
+				worldServerPort = *(word*)(pak.buffer + 0x13);
 				StartWorldServer();
 			}
 			if(pak.command == 0x0807){

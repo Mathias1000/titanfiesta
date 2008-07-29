@@ -7,6 +7,7 @@ CURL *curl;
 
 char charServerIP[32];
 char worldServerIP[32];
+word worldServerPort;
 
 DWORD WINAPI loginServerThread(LPVOID lpParam){
 	loginServer->ServerThread();
@@ -33,12 +34,12 @@ DWORD WINAPI charServerWaitThread(LPVOID lpParam){
 
 DWORD WINAPI worldServerWaitThread(LPVOID lpParam){
 	worldServer = new CConnection("[Game]");
-	if(!worldServer->WaitConnection("127.0.0.1", 9120)){
+	if(!worldServer->WaitConnection("127.0.0.1", worldServerPort)){
 		printf("Couldnt wait for game server conections! :(\n");
 		return 0;
 	}
 
-	if(!worldServer->Connect(worldServerIP, 9120, 0)){
+	if(!worldServer->Connect(worldServerIP, worldServerPort, 0)){
 		printf("Couldnt connect to game server! :(\n");
 		return 0;
 	}
