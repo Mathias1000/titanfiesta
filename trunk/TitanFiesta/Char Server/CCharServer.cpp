@@ -74,28 +74,26 @@ PACKETHANDLER(pakCreateChar){
 
 PACKETHANDLER(pakCharList){
 	CPacket pakout(0xC14);
-	pakout.Add<word>(0xd1c0); // Unk
+	pakout.Add<word>(0xd1c0); // Unk [Changes every login]
 	pakout.Add<byte>(0x01); // Num of chars
 	{
-		pakout.Add<word>(0x3f52); // unk
+		pakout.Add<word>(0x3f52); // unk [Stays the same]
 		pakout.Add<word>(0x000f); // Name length (Always 16?)
 		pakout.AddFixLenStr("ExJam", 0x10); // Name
 		pakout.Add<word>(0x03); // Level
 		pakout.Add<byte>(0x03); // Char slot
-		pakout.AddFixLenStr("GoldCave", 0x0D); // Current town (3-byte folder name)
-		pakout.Add<byte>(0x41); // Unk
-		pakout.Add<byte>(0x0B); // Unk
-		pakout.Add<byte>(0x00); // Unk
-		pakout.Add<byte>(0x09); // UNk
-		pakout.Add<byte>(0x5B);//Prof & Gender
+		pakout.AddFixLenStr("GoldCave", 0x0D); // Current town (map folder name)
+		pakout.Add<dword>(0x00); // Unk [Changes every login]
+		pakout.Add<byte>(0x05 | 0x80);//Prof [0x05 (Fighter)] & Gender [0x80 (Male)]
 		pakout.Add<byte>(0x00);//Hair Style
 		pakout.Add<byte>(0x02);//Hair Colour
 		pakout.Add<byte>(0x00);//Face Style
-		pakout.Add<word>(0x38AB);
-		pakout.Add<dword>(0x05DF);//Body Armour
-		pakout.Add<word>(0xFFFF);
-		pakout.Add<word>(0x05DE);//Leg Armour
-		pakout.Add<word>(0x05E0);//Boot ARmour
+		// Armor
+		pakout.Add<word>(0x00FC); //Weapon [Not Shown]
+		pakout.Add<dword>(0x0003);//Body Armour
+		pakout.Add<word>(0x00C9); //Shield [Not Shown]
+		pakout.Add<word>(0x0002); //Leg Armour
+		pakout.Add<word>(0x0004); //Boot Armour
 		pakout.Fill<byte>(0xFF, 0x1C);
 		pakout.Add<word>(0x0);
 		pakout.Add<byte>(0xf0);
