@@ -33,7 +33,8 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 
 	switch(pak->Command()){
 		case 0xC0F:
-			PACKETRECV(pakUserLogin);
+			if(thisclient->id == -1)
+				PACKETRECV(pakUserLogin);
 		break;
 		case 0x80D:
 		{
@@ -44,10 +45,12 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 		}
 		break;
 		case 0x827:
-			PACKETRECV(pakCharList);
+			if(thisclient->id != -1)
+				PACKETRECV(pakCharList);
 		break;
 		case 0x1401:
-			PACKETRECV(pakCreateChar);
+			if(thisclient->id != -1)
+				PACKETRECV(pakCreateChar);
 		break;
 		default:
 			pak->Pos(0);
@@ -69,7 +72,12 @@ PACKETHANDLER(pakCreateChar){
 	byte faceStyle = pak->Get<byte>(0x16, 0);
 	Log(MSG_DEBUG, "IsMale: %d, Prof: %d, Hair: %d, Colour: %d, Face: %d", isMale, profession, hairStyle, hairColour, faceStyle);
 	
-	// Check for existing character
+	char* sqlSafeName = db->MakeSQLSafe(name);
+	if(_strcmpi(sqlSafeName, name) != 0){
+		Log(MSG_DEBUG, "MySql Safe char create %s != %s", sqlSafeName, name);
+		return false;
+	}
+
 	MYSQL_RES* result = db->DoSQL("SELECT `charname` FROM `characters` WHERE `charname`='%s'", name);
 	if(mysql_num_rows(result) > 0){
 		Log(MSG_DEBUG, "Characters already exists");
@@ -82,9 +90,10 @@ PACKETHANDLER(pakCreateChar){
 		return false;
 	}
 
-	// Add use to Characters table, woo.
 	db->DoSQL("INSERT INTO `characters` (`owner`, `charname`, `profession`, `ismale`, `hair`, `haircolor`, `face`) values \
-			  ('%s', '%s', %u, %u, %u, %u, %u)", thisclient->username, name, profession, isMale, hairStyle, hairColour, faceStyle);
+			  ('%s', '%s', %u, %u, %u, %u, %u)", thisclient->username, sqlSafeName, profession, isMale, hairStyle, hairColour, faceStyle);
+
+	free(sqlSafeName);
 
 	CPacket pakout(0x1406);
 	pakout.Add<byte>(0x01); // Slot?
@@ -143,7 +152,7 @@ PACKETHANDLER(pakCharList){
 	return true;
 }
 
-const static unsigned char packet0826[130] = {
+const static byte packet0826[130] = {
 		0x80, 0x00, 0xF1, 0xFF, 0x00, 0x00, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -178,6 +187,7 @@ PACKETHANDLER(pakUserLogin){
 	MYSQL_ROW row = mysql_fetch_row(result);
 	if(atoi(row[1]) != thisclient->loginid){
 		Log(MSG_DEBUG, "Incorrect loginid");
+		thisclient->id = -1;
 		goto authFail;
 	}
 
@@ -186,14 +196,13 @@ PACKETHANDLER(pakUserLogin){
 
 	if(thisclient->accesslevel < 1){
 		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
+		thisclient->id = -1;
 		goto authFail;
 	}
 
 	{
 		CPacket pakout(0x0826);
-		for(dword i = 0; i < 130; i++){
-			pakout.Add<byte>(packet0826[i]);
-		}
+		pakout.AddBytes(packet0826, 130);
 		SendPacket(thisclient, &pakout);
 	}
 

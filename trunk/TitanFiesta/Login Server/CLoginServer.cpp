@@ -42,10 +42,12 @@ void CLoginServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak 
 		}
 		break;
 		case 0xC20:
-			PACKETRECV(pakTokenLogin);
+			if(thisclient->id == -1)
+				PACKETRECV(pakTokenLogin);
 		break;
 		case 0xC0B:
-			PACKETRECV(pakJoinServer);
+			if(thisclient->id != -1)
+				PACKETRECV(pakJoinServer);
 		break;
 		case 0xC1B:
 			PACKETRECV(pakPing);
@@ -127,6 +129,7 @@ PACKETHANDLER(pakTokenLogin){
 
 	if(thisclient->accesslevel < 1){
 		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
+		thisclient->id = -1;
 		goto authFail;
 	}
 
