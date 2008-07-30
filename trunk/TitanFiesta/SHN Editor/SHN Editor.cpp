@@ -71,7 +71,7 @@ BOOL CApp::InitInstance()
 		//  dismissed with Cancel
 	}
 
-	delete curFile;
+	DEL(curFile);
 
 	// Since the dialog has been closed, return FALSE so that we exit the
 	//  application, rather than start the application's message pump.

@@ -66,10 +66,11 @@ BEGIN_MESSAGE_MAP(CDlg, CDialog)
 	ON_WM_QUERYDRAGICON()
 	ON_WM_SIZE()
 	//}}AFX_MSG_MAP
+	ON_COMMAND(ID_FILE_OPEN32772, &CDlg::OnFileOpen)
 END_MESSAGE_MAP()
 
 bool isReady = false;
-CSHN* curFile;
+CSHN* curFile = NULL;
 // CDlg message handlers
 void CDlg::OnSize(UINT nType, int cx, int cy){
 	CDialog::OnSize(nType, cx, cy);
@@ -102,52 +103,6 @@ BOOL CDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);
 	SetIcon(m_hIcon, FALSE);
 
-	curFile = new CSHN();
-	curFile->Open("ItemInfo.shn");
-
-	//lstData.Reset();
-	//lstData.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-	//lstData.SetDefaultEditor(NULL, NULL, &m_wndEdit);
-	//ListView_SetExtendedListViewStyle(lstData.m_hWnd, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-
-	char temp[64];
-	for(dword i = 0; i < curFile->columns.size(); i++){
-		CSHN::SSHNColumn* curCol = curFile->columns[i];
-		sprintf_s(temp, 64, "%s [%d]", curCol->name, curCol->type);
-		lstData.InsertColumn(i, temp, LVCFMT_LEFT, 100);
-	}
-
-	lstData.SetItemCount(curFile->rows.size());
-	/*for(dword i = 0; i < curFile->rows.size(); i++){
-		CSHN::SSHNRow* curRow = curFile->rows[i];
-
-		for(dword j = 0; j < curRow->data.size(); j++){
-			CSHN::SSHNRowData* curData = curRow->data[j];
-			switch(curFile->columns[j]->type){
-				case 1:
-					sprintf_s(temp, 64, "%d", curData->data[0]);
-				break;
-				case 2:
-					sprintf_s(temp, 64, "%d", *reinterpret_cast<word*>(curData->data));
-				break;
-				case 3:
-				case 11:
-				case 18:
-				case 27:
-					sprintf_s(temp, 64, "%d", *reinterpret_cast<dword*>(curData->data));
-				break;
-				case 9:
-				case 26:
-					sprintf_s(temp, 64, "%s", reinterpret_cast<char*>(curData->data));
-				break;
-			};
-			if(j == 0){
-				lstData.InsertItem(i, (LPCTSTR)NULL);
-			}else{
-				//lstData.SetItemText(i, j, temp);
-			}
-		}
-	}*/
 	isReady = true;
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -199,4 +154,35 @@ void CDlg::OnPaint()
 HCURSOR CDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
+}
+
+void CDlg::OnFileOpen(){
+	CFileDialog FileDlg(TRUE, ".shn", NULL, 0, "SHN Files (*.shn)|*.shn||");
+
+	if( FileDlg.DoModal() != IDOK ) return;
+
+	BSTR fileTitle = FileDlg.GetFileTitle().AllocSysString();
+	BSTR fileName = FileDlg.GetFileName().AllocSysString();
+	char temp2[64];
+	char tempPath[MAX_PATH];
+	wcstombs_s(NULL, temp2, 64, fileTitle, 64);
+	sprintf_s(tempPath, MAX_PATH, "%s - SHN Editor", temp2);
+	SetWindowText(tempPath);	
+	wcstombs_s(NULL, tempPath, MAX_PATH, fileName, MAX_PATH);
+	DEL(curFile);
+	curFile = new CSHN();
+	curFile->Open(tempPath);
+	SysFreeString(fileName);
+
+	lstData.DeleteAllItems();
+	lstData.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+
+	char temp[64];
+	for(dword i = 0; i < curFile->columns.size(); i++){
+		CSHN::SSHNColumn* curCol = curFile->columns[i];
+		sprintf_s(temp, 64, "%s [%d]", curCol->name, curCol->type);
+		lstData.InsertColumn(i, temp, LVCFMT_LEFT, 100);
+	}
+
+	lstData.SetItemCount(curFile->rows.size());
 }

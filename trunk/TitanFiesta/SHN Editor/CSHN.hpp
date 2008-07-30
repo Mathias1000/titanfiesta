@@ -3,11 +3,12 @@ class CSHN
 public:
 	struct SSHNColumn
 	{
-		SSHNColumn(){}
+		SSHNColumn():showInHex(false){}
 		~SSHNColumn(){}
 		char name[0x30];
 		dword type;
 		dword columnSize;
+		bool showInHex;
 	};
 	struct SSHNRowData
 	{
@@ -24,7 +25,10 @@ public:
 		std::vector<SSHNRowData*> data;
 	};
 	CSHN(){}
-	~CSHN(){DELVEC(rows);DELVEC(columns);}
+	~CSHN(){
+		DELVEC(rows);
+		DELVEC(columns);
+	}
 
 	void Open(char* path){
 		FILE* fh2;
@@ -64,26 +68,19 @@ public:
 		}
 		data -= 0x24;
 		filesize += 0x24;
-		char tempPath[256];
-		sprintf_s(tempPath, 256, "%s.dec", path);
-		FILE* fh3;
-		fopen_s(&fh3, tempPath, "wb");
-		if(fh3 == NULL)
-			return;
-		fwrite(data, filesize, 1, fh3);
-		fclose(fh3);
-		DEL(data);
 
-		CTitanFile fh(tempPath, "rb");
+		CTitanFile fh(data, filesize);
 		fh.Skip(0x28);
 		dword rowCount = fh.Read<dword>();
 		fh.Skip(4);
 		dword cols = fh.Read<dword>();
 		for(dword i = 0; i < cols; i++){
-			SSHNColumn* curCol = reinterpret_cast<SSHNColumn*>(fh.ReadBytes(0x38));
-			printf("Column Name: %s Type: %d Size: %d\n", curCol->name, curCol->type, curCol->columnSize);
+			SSHNColumn* curCol = new SSHNColumn();
+			fh.ReadBuffer(reinterpret_cast<byte*>(curCol), 0x38);
+			curCol->showInHex = false;
 			columns.push_back(curCol);
 		}
+
 		for(dword i = 0; i < rowCount; i++){
 			SSHNRow* curRow = new SSHNRow();
 			curRow->rowSize = fh.Read<word>();
@@ -138,6 +135,7 @@ public:
 			rows.push_back(curRow);
 		}
 		fh.Close();
+		DEL(data);
 	}
 	std::vector<SSHNColumn*> columns;
 	std::vector<SSHNRow*> rows;

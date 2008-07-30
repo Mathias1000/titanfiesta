@@ -1,8 +1,9 @@
 class CTitanFile
 {
 public:
-	CTitanFile() : _Open(false) {}
-	CTitanFile(char* path, char* mode){ _Open = false; Open(path, mode); }
+	CTitanFile() : _Open(false), data(NULL) {}
+	CTitanFile(char* path, char* mode):data(NULL){ _Open = false; Open(path, mode); }
+	CTitanFile(byte* buffer, int bufferSize){ data = buffer; dataSize = bufferSize; dataPos = 0; _Open = true; }
 	~CTitanFile(){Close();}
 
 	bool Open(char* path, char* mode){
@@ -49,26 +50,47 @@ public:
 		if(!_Open) return 0;
 
 		T value;
-		fread(&value, sizeof(T), 1, _fh);
-		if(Pos() > Size()){
-			throw(1);
+		if(data == NULL){
+			fread(&value, sizeof(T), 1, _fh);
+		}else{
+			memcpy(&value, data + dataPos, sizeof(T));
+			dataPos += sizeof(T);
 		}
 		return value;
 	}
 	
 	unsigned char* ReadBytes(dword bytes){
 		if(!_Open) return 0;
-
 		unsigned char* value = new unsigned char[bytes];
-		fread(value, sizeof(unsigned char), bytes, _fh);
+		if(data == NULL){
+			fread(value, sizeof(unsigned char), bytes, _fh);
+		}else{
+			memcpy(value, data + dataPos, bytes);
+			dataPos += bytes;
+		}
 		return value;
 	}
+	
+	void ReadBuffer(byte* value, dword bytes){
+		if(!_Open) return;
+		if(data == NULL){
+			fread(value, sizeof(unsigned char), bytes, _fh);
+		}else{
+			memcpy(value, data + dataPos, bytes);
+			dataPos += bytes;
+		}
+	}
+
 
 	char* ReadString(dword bytes){
 		if(!_Open) return 0;
-
 		char* value = new char[bytes+1];
-		fread(value, sizeof(char), bytes, _fh);
+		if(data == NULL){
+			fread(value, sizeof(char), bytes, _fh);
+		}else{
+			memcpy(value, data + dataPos, bytes);
+			dataPos += bytes;
+		}
 		value[bytes] = 0;
 		return value;
 	}
@@ -77,9 +99,14 @@ public:
 		if(!_Open) return 0;
 
 		char* value = new char[255];
-		for(word i = 0; i < 255; i++){
-			fread(&value[i], sizeof(char), 1, _fh);
-			if(value[i] == 0) break;
+		if(data == NULL){
+			for(word i = 0; i < 255; i++){
+				fread(&value[i], sizeof(char), 1, _fh);
+				if(value[i] == 0) break;
+			}
+		}else{
+			strcpy_s(value, 255, reinterpret_cast<char*>(data+dataPos));
+			dataPos += strlen(value);
 		}
 		return value;
 	}
@@ -87,17 +114,26 @@ public:
 	void Skip(dword bytes){
 		if(!_Open) return;
 
-		fseek(_fh, bytes, SEEK_CUR);
+		if(data == NULL){
+			fseek(_fh, bytes, SEEK_CUR);
+		}else{
+			dataPos += bytes;
+		}
 	}
 
 	void Seek(dword position){
 		if(!_Open) return;
 
-		fseek(_fh, position, SEEK_SET);
+		if(data == NULL){
+			fseek(_fh, position, SEEK_SET);
+		}else{
+			dataPos = position;
+		}
 	}
 
 	dword Size(){
 		if(!_Open) return 0;
+		if(data != NULL) return dataSize;
 		
 		dword position = ftell(_fh);
     fseek(_fh, 0, SEEK_END);
@@ -109,7 +145,10 @@ public:
 	dword Pos(){
 		if(!_Open) return 0;
 
-		return ftell(_fh);
+		if(data == NULL)
+			return ftell(_fh);
+		else
+			return dataPos;
 	}
 
 	void Rewind(){
@@ -128,9 +167,16 @@ public:
 		if(!_Open) return;
 
 		_Open = false;
-		fclose(_fh);
+		if(data == NULL)
+			fclose(_fh);
+		else
+			data = NULL;
 	}
 private:
 	FILE* _fh;
 	bool _Open;
+
+	byte* data;
+	int dataSize;
+	int dataPos;
 };

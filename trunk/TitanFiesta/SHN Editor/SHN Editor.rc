@@ -41,12 +41,13 @@ BEGIN
 END
 
 IDD_SHNEDITOR_DIALOG DIALOGEX 0, 0, 340, 229
-STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "SHN Editor"
+MENU IDR_MENU1
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_LIST_DATA,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,0,0,340,229
+    CONTROL         "",IDC_LIST_DATA,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,0,1,340,228
     EDITTEXT        IDC_EDIT,246,215,40,14,ES_AUTOHSCROLL | NOT WS_VISIBLE
 END
 
@@ -179,6 +180,32 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\SHN Editor.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MENU1 MENU 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&New",                        ID_FILE_NEW32771
+        MENUITEM "&Open",                       ID_FILE_OPEN32772
+        MENUITEM "&Save",                       ID_FILE_SAVE32773
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_FILE_EXIT
+    END
+END
+
+IDR_MENU_COLUMN_HEADER MENU 
+BEGIN
+    POPUP "RClick"
+    BEGIN
+        MENUITEM "Toggle &Hex",                 ID_RCLICK_SHOWINHEX
+    END
+END
+
 #endif    // English (U.K.) resources
 /////////////////////////////////////////////////////////////////////////////
 
