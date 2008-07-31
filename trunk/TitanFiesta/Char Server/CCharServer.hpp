@@ -77,6 +77,7 @@ public:
 	PACKETHANDLER(pakUserLogin);
 	PACKETHANDLER(pakCharList);
 	PACKETHANDLER(pakCreateChar);
+	PACKETHANDLER(pakDeleteChar);
 
 	CServerData* GetServerByID(dword id){		
 		CServerData* retServ = NULL;
