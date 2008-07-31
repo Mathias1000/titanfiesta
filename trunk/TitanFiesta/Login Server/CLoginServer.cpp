@@ -86,7 +86,7 @@ PACKETHANDLER(pakJoinServer){
 	}
 
 	thisclient->loginid = rg.IRandom(1, 1337);
-	db->DoSQL("UPDATE `users` SET `loginid`='%d' WHERE `id`='%d'", thisclient->loginid, thisclient->id);
+	db->ExecSQL("UPDATE `users` SET `loginid`='%d' WHERE `id`='%d'", thisclient->loginid, thisclient->id);
 
 	CPacket pakout(0xC0C);
 	pakout.Add<byte>(strlen(srv->ip));
@@ -163,6 +163,7 @@ PACKETHANDLER(pakTokenLogin){
 	9 = low
 	10 = medium
 	*/
+	db->QFree(result);
 	return true;
 authFail:
 	{
@@ -170,6 +171,7 @@ authFail:
 		pakout.Add<word>(0x44);
 		SendPacket(thisclient, &pakout);
 	}
+	db->QFree(result);
 	return true;
 }
 

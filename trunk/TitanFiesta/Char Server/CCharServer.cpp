@@ -71,8 +71,11 @@ PACKETHANDLER(pakDeleteChar){
 	Log(MSG_DEBUG, "Delete character in slot %d", slot);
 
 	// Should we do any checks on this?
-	db->DoSQL("DELETE FROM `characters` WHERE owner='%s' AND slot=%d", thisclient->username, slot);
-
+	dword del = db->ExecSQL("DELETE FROM `characters` WHERE owner='%s' AND slot=%d", thisclient->username, slot);
+	if (del < 1)
+		Log(MSG_DEBUG, "Didn't delete any characters");
+	else if (del > 1)
+		Log(MSG_DEBUG, "Deleted more than 1 character");
 	CPacket pakout(0x140c);
 		pakout.Add<byte>(slot);
 	SendPacket(thisclient, &pakout);
@@ -103,7 +106,7 @@ PACKETHANDLER(pakCreateChar){
 		Log(MSG_DEBUG, "Character count is already >= 4, bad creation - %s", thisclient->username);
 		return false;
 	}
-
+	db->QFree(result);
 	char* sqlSafeName = db->MakeSQLSafe(name);
 	if(_strcmpi(sqlSafeName, name) != 0){
 		Log(MSG_DEBUG, "MySql Safe char create %s != %s", sqlSafeName, name);
@@ -121,8 +124,8 @@ PACKETHANDLER(pakCreateChar){
 
 		return false;
 	}
-
-	db->DoSQL("INSERT INTO `characters` (`owner`,`charname`,`slot`,`profession`,`ismale`,`hair`,`haircolor`,`face`) values \
+	db->QFree(result);
+	db->ExecSQL("INSERT INTO `characters` (`owner`,`charname`,`slot`,`profession`,`ismale`,`hair`,`haircolor`,`face`) values \
 			  ('%s', '%s', %u, %u, %u, %u, %u, %u)", thisclient->username, sqlSafeName, slot, profession, isMale, hairStyle, hairColour, faceStyle);
 
 	free(sqlSafeName);
@@ -196,7 +199,7 @@ PACKETHANDLER(pakCharList){
 		pakout.Add<word>(0xdb78); // ?
 		pakout.Add<word>(0xc315); // ?
 	}
-
+	db->QFree(result);
 	SendPacket(thisclient, &pakout);
 	return true;
 }
@@ -254,7 +257,7 @@ PACKETHANDLER(pakUserLogin){
 		pakout.AddBytes((byte*)packet0826, 130);
 		SendPacket(thisclient, &pakout);
 	}
-
+	db->QFree(result);
 	return true;
 authFail:
 	{
@@ -262,6 +265,7 @@ authFail:
 		pakout.Add<word>(0x44);
 		SendPacket(thisclient, &pakout);
 	}
+	db->QFree(result);
 	return true;
 }
 

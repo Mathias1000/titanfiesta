@@ -36,6 +36,7 @@ CREATE TABLE `characters` (
   `id` int(11) NOT NULL auto_increment,
   `owner` varchar(16) NOT NULL,
   `charname` varchar(16) NOT NULL,
+  `slot` tinyint(4) NOT NULL default '0',
   `map` varchar(12) NOT NULL default 'Rou',
   `money` bigint(20) NOT NULL default '0',
   `level` int(11) NOT NULL default '1',
