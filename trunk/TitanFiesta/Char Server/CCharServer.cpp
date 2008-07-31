@@ -260,12 +260,12 @@ PACKETHANDLER(pakUserLogin){
 	db->QFree(result);
 	return true;
 authFail:
+	db->QFree(result);
 	{
 		CPacket pakout(0x0C09);
 		pakout.Add<word>(0x44);
 		SendPacket(thisclient, &pakout);
 	}
-	db->QFree(result);
 	return true;
 }
 

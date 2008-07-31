@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SHN Decrypter", "SHN Decryp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SHN Editor", "SHN Editor\SHN Editor.vcproj", "{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Server", "Game Server\Game Server.vcproj", "{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -37,6 +39,10 @@ Global
 		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Debug|Win32.Build.0 = Debug|Win32
 		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Release|Win32.ActiveCfg = Release|Win32
 		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Release|Win32.Build.0 = Release|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Debug|Win32.Build.0 = Debug|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Release|Win32.ActiveCfg = Release|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
