@@ -101,6 +101,13 @@ public:
 		return (retval==0)?(mysql_affected_rows(&_MySql)):(0);
 	}
 
+	void QFree(MYSQL_RES*& result) {
+		if (result != NULL) {
+			mysql_free_result( result );
+			result = NULL;
+		}
+	}
+
 	char* EncodeBinary(void* data, dword datalen){
 		char* retVal = new char[(datalen * 2) + 1];
 		EncodeBinary(retVal, data, datalen);
