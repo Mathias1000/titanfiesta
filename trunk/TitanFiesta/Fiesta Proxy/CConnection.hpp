@@ -1,10 +1,18 @@
 class CConnection {
 public:
-	CConnection(char* name):serverName(name),disconnect(false),xorTableLoc(0){}
-	~CConnection(){}
+	CConnection(char* name):serverName(name),disconnect(false),xorTableLoc(0){
+		char tmpName[64];
+		sprintf_s(tmpName, 64, "%s.log", serverName);
+		fopen_s(&fh, tmpName, "wb");
+		isWriting = false;
+	}
+	~CConnection(){
+		fclose(fh);
+	}
 
 	char* serverName;
-
+	FILE* fh;
+	bool volatile isWriting;
 
 	bool WaitConnection(char* ip, dword port){
 		sockaddr_in ain;
@@ -74,22 +82,28 @@ public:
 	}
 
 	void SendServerPacket(CPacket* pak){
-		printf("%sOUT %02x ", serverName, (unsigned char)pak->buffer[0]);
+		while(isWriting){Sleep(1);}
+		isWriting = true;
+		fprintf(fh, "%sOUT %02X ", serverName, (unsigned char)pak->buffer[0]);
 		for(dword i = 1; i < pak->size; i++){
-			printf("%02x ", (unsigned char)(pak->buffer[i] ^ xorTable[xorTableLoc]));
+			fprintf(fh, "%02X ", (unsigned char)(pak->buffer[i] ^ xorTable[xorTableLoc]));
 			xorTableLoc++;
 			if(xorTableLoc == 0x1F3) xorTableLoc = 0;
 		}
-		printf("\n");
+		fprintf(fh, "\n");
+		isWriting = false;
 		send( srvSck, pak->buffer, pak->size, 0 );
 	}
 
 	void SendClientPacket(CPacket* pak){
 		//if(pak->command != 0x201a){
-		printf("%sIN ", serverName);
+		while(isWriting){Sleep(1);}
+		isWriting = true;
+		fprintf(fh, "%sIN ", serverName);
 		for(dword i = 0; i < pak->size; i++)
-			printf("%02x ", (unsigned char)pak->buffer[i]);
-		printf("\n");
+			fprintf(fh, "%02X ", (unsigned char)pak->buffer[i]);
+		fprintf(fh, "\n");
+		isWriting = false;
 		//}
 		send( NewSocket, pak->buffer, pak->size, 0 );
 	}
