@@ -52,7 +52,7 @@ public:
 	}
 	bool DecryptBufferHeader( CTitanClient* baseclient, CTitanPacket* pak ){
 		if(pak->Get<byte>(0,0) == 0){
-			pak->Size(pak->Get<byte>(1,0) + 3);
+			pak->Size(pak->Get<word>(1,0) + 3);
 		}else{
 			pak->Size(pak->Get<byte>(0,0) + 1);
 		}
@@ -62,7 +62,8 @@ public:
 		CGameClient* thisclient = (CGameClient*)baseclient;
 		dword decStart = 1;
 		if(pak->Get<byte>(0,0) == 0){
-			pak->Size(pak->Get<byte>(1,0) + 3);
+			pak->Size(pak->Get<word>(1,0) + 3);
+			decStart = 5;
 		}else{
 			pak->Size(pak->Get<byte>(0,0) + 1);
 		}

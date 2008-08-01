@@ -32,30 +32,6 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 	Log(MSG_INFO,"Received packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
 
 	switch(pak->Command()){
-		case 0x7002:
-			if(thisclient->id != -1)
-				PACKETRECV(pak7002);
-		break;
-		case 0x7004:
-			if(thisclient->id != -1)
-				PACKETRECV(pak7004);
-		break;
-		case 0x700c:
-			if(thisclient->id != -1)
-				PACKETRECV(pak700c);
-		break;
-		case 0x700e:
-			if(thisclient->id != -1)
-				PACKETRECV(pak700e);
-		break;
-		case 0x700a:
-			if(thisclient->id != -1)
-				PACKETRECV(pak700a);
-		break;
-		case 0x7c06:
-			if(thisclient->id != -1)
-				PACKETRECV(pak7c06);
-		break;
 		case 0xC0F:
 			if(thisclient->id == -1)
 				PACKETRECV(pakUserLogin);
@@ -68,6 +44,10 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			SendPacket(thisclient, &pakout);
 		}
 		break;
+		case 0x827:
+			if(thisclient->id != -1)
+				PACKETRECV(pakCharList);
+		break;
 		case 0x1401:
 			if(thisclient->id != -1)
 				PACKETRECV(pakCreateChar);
@@ -75,10 +55,6 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 		case 0x1407:
 			if(thisclient->id != -1)
 				PACKETRECV(pakDeleteChar);
-		break;
-		case 0x1001:
-			if(thisclient->id != -1)
-				PACKETRECV(pakSelectChar);
 		break;
 		default:
 			pak->Pos(0);
@@ -90,99 +66,16 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 	}
 }
 
-const static byte packet0826[130] = {
-		0x80, 0x00, 0xF1, 0xFF, 0x00, 0x00, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x63, 0x63, 
-		0x20, 0xD5, 
-};
-
-PACKETHANDLER(pak7002) {
-	FILE* fh = fopen("7003.pak", "rb");
-	CPacket pakout(0x7003);
-	int tmp;
-	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
-	SendPacket(thisclient, &pakout);
-	fclose(fh);
-	return true;
-}
-
-PACKETHANDLER(pak7004) {
-	FILE* fh = fopen("7005.pak", "rb");
-	CPacket pakout(0x7005);
-	int tmp;
-	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
-	SendPacket(thisclient, &pakout);
-	fclose(fh);
-	return true;
-}
-
-PACKETHANDLER(pak700c) {
-	FILE* fh = fopen("700d.pak", "rb");
-	CPacket pakout(0x700d);
-	int tmp;
-	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
-	SendPacket(thisclient, &pakout);
-	fclose(fh);
-	return true;
-}
-
-PACKETHANDLER(pak700e) {
-	FILE* fh = fopen("700f.pak", "rb");
-	CPacket pakout(0x700F);
-	int tmp;
-	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
-	SendPacket(thisclient, &pakout);
-	fclose(fh);
-	return true;
-}
-
-PACKETHANDLER(pak700a) {
-	FILE* fh = fopen("700b.pak", "rb");
-	CPacket pakout(0x700b);
-	int tmp;
-	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
-	SendPacket(thisclient, &pakout);
-	fclose(fh);
-	return true;
-}
-
-PACKETHANDLER(pak7c06) {
-	CPacket pakout(0x7c07);
-	pakout.Add<dword>(0x00000db1);
-	SendPacket(thisclient, &pakout);
-	return true;
-}
-
-PACKETHANDLER(pakSelectChar){
-	byte slot = pak->Get<byte>(0x03, 0);
-
-	db->ExecSQL("UPDATE `users` SET `lastslot`=%d WHERE username='%s'", slot, thisclient->username);
-
-	CPacket pakout(0x1003);
-	pakout.AddFixLenStr("127.0.0.1", 0x10);
-	pakout.Add<word>(9210);
-	SendPacket(thisclient, &pakout);
-	return true;
-}
-
 PACKETHANDLER(pakDeleteChar){
 	byte slot = pak->Get<byte>(0x03, 0);
 	Log(MSG_DEBUG, "Delete character in slot %d", slot);
 
 	// Should we do any checks on this?
 	dword del = db->ExecSQL("DELETE FROM `characters` WHERE owner='%s' AND slot=%d", thisclient->username, slot);
-
 	if (del < 1)
 		Log(MSG_DEBUG, "Didn't delete any characters");
 	else if (del > 1)
 		Log(MSG_DEBUG, "Deleted more than 1 character");
-
 	CPacket pakout(0x140c);
 		pakout.Add<byte>(slot);
 	SendPacket(thisclient, &pakout);
@@ -204,6 +97,7 @@ PACKETHANDLER(pakCreateChar){
 	byte hairColour = pak->Get<byte>(0x16, 0);
 	byte faceStyle = pak->Get<byte>(0x17, 0);
 	Log(MSG_DEBUG, "Slot: %d, IsMale: %d, Prof: %d, Hair: %d, Colour: %d, Face: %d", slot, isMale, profession, hairStyle, hairColour, faceStyle);
+
 
 	MYSQL_RES* result = db->DoSQL("SELECT `slot` FROM `characters` WHERE `owner`='%s' ORDER BY `slot` ASC", thisclient->username);
 
@@ -264,6 +158,64 @@ PACKETHANDLER(pakCreateChar){
 	return true;
 }
 
+PACKETHANDLER(pakCharList){
+	// Select characters
+	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face` FROM `characters` WHERE `owner`='%s'", thisclient->username);
+	if(!result){
+		Log(MSG_DEBUG, "SELECT returned bollocks");
+		return false;
+	}
+	
+	MYSQL_ROW row;
+	CPacket pakout(0xC14);
+
+	pakout.Add<word>(thisclient->loginid); // Unk [Changes every login]
+	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
+	while (row = mysql_fetch_row(result)) {
+		pakout.Add<word>(atoi(row[0])); // Character ID
+		pakout.Add<word>(0x000f); // Name length (Always 16?)
+		pakout.AddFixLenStr(row[1], 0x10); // Name
+		pakout.Add<word>(atoi(row[2])); // Level
+		pakout.Add<byte>(atoi(row[3])); // Char slot
+		pakout.AddFixLenStr(row[4], 0x0D); // Current town (map folder name)
+		pakout.Add<dword>(0x00); // Unk [Changes every login]
+		pakout.Add<byte>(atoi(row[5]) | (atoi(row[6]) << 7));//Prof | Gender
+		pakout.Add<byte>(atoi(row[7]));//Hair Style
+		pakout.Add<byte>(atoi(row[8]));//Hair Colour
+		pakout.Add<byte>(atoi(row[9]));//Face Style
+		// Wiping it to default armor for testing
+		pakout.Add<word>(0xFFFF); //Weapon [Not Shown]
+		pakout.Add<word>(0xFFFF);//Body Armour
+		pakout.Add<word>(0xFFFF); //Shield [Not Shown]
+		pakout.Add<word>(0xFFFF); //Leg Armour
+		pakout.Add<word>(0xFFFF); //Boot Armour
+		pakout.Fill<byte>(0xFF, 0x1C);
+		pakout.Add<word>(0x0); // 0x0060 on my main char
+		pakout.Add<byte>(0xf0);
+		pakout.Add<dword>(0xffffffff);
+		pakout.Fill<byte>(0x00, 12);
+		pakout.Add<dword>(0x0cdc); // Pos?
+		pakout.Add<dword>(0x1bc9); // Pos?
+		pakout.Add<word>(0xdb78); // ?
+		pakout.Add<word>(0xc315); // ?
+	}
+	db->QFree(result);
+	SendPacket(thisclient, &pakout);
+	return true;
+}
+
+const static byte packet0826[130] = {
+		0x80, 0x00, 0xF1, 0xFF, 0x00, 0x00, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x63, 0x63, 
+		0x20, 0xD5, 
+};
+
 PACKETHANDLER(pakUserLogin){
 	char username[0x13];
 	username[0x12] = 0;
@@ -299,22 +251,21 @@ PACKETHANDLER(pakUserLogin){
 		thisclient->id = -1;
 		goto authFail;
 	}
-	db->QFree(result);
-	
-	SendCharList(thisclient);
-/*	{
+
+	{
 		CPacket pakout(0x0826);
 		pakout.AddBytes((byte*)packet0826, 130);
 		SendPacket(thisclient, &pakout);
-	}*/
+	}
+	db->QFree(result);
 	return true;
 authFail:
+	db->QFree(result);
 	{
 		CPacket pakout(0x0C09);
 		pakout.Add<word>(0x44);
 		SendPacket(thisclient, &pakout);
 	}
-	db->QFree(result);
 	return true;
 }
 
@@ -354,48 +305,4 @@ void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
 		case TITAN_ISC_UPDATEUSERCNT:
 		break;
 	}
-}
-
-void CCharServer::SendCharList(CCharClient* thisclient) {
-	// Select characters
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face` FROM `characters` WHERE `owner`='%s'", thisclient->username);
-	if(!result){
-		Log(MSG_DEBUG, "SELECT returned bollocks");
-		return;
-	}
-	
-	MYSQL_ROW row;
-	CPacket pakout(0xC14);
-	pakout.Add<word>(thisclient->loginid); // Unique ID
-	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
-	while (row = mysql_fetch_row(result)) {
-		pakout.Add<word>(atoi(row[0])); // Character ID
-		pakout.Add<word>(0x000f); // Name length (Always 16?)
-		pakout.AddFixLenStr(row[1], 0x10); // Name
-		pakout.Add<word>(atoi(row[2])); // Level
-		pakout.Add<byte>(atoi(row[3])); // Char slot
-		pakout.AddFixLenStr(row[4], 0x0D); // Current town (map folder name)
-		pakout.Add<dword>(0x00); // Unk [Changes every login]
-		pakout.Add<byte>(atoi(row[5]) | (atoi(row[6]) << 7));//Prof | Gender
-		pakout.Add<byte>(atoi(row[7]));//Hair Style
-		pakout.Add<byte>(atoi(row[8]));//Hair Colour
-		pakout.Add<byte>(atoi(row[9]));//Face Style
-		// Wiping it to default armor for testing
-		pakout.Add<word>(0xFFFF); //Weapon [Not Shown]
-		pakout.Add<word>(0xFFFF);//Body Armour
-		pakout.Add<word>(0xFFFF); //Shield [Not Shown]
-		pakout.Add<word>(0xFFFF); //Leg Armour
-		pakout.Add<word>(0xFFFF); //Boot Armour
-		pakout.Fill<byte>(0xFF, 0x1C);
-		pakout.Add<word>(0x0); // 0x0060 on my main char
-		pakout.Add<byte>(0xf0);
-		pakout.Add<dword>(0xffffffff);
-		pakout.Fill<byte>(0x00, 12);
-		pakout.Add<dword>(0x0cdc); // Pos?
-		pakout.Add<dword>(0x1bc9); // Pos?
-		pakout.Add<word>(0xdb78); // ?
-		pakout.Add<word>(0xc315); // ?
-	}
-	db->QFree(result);
-	SendPacket(thisclient, &pakout);
 }

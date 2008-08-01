@@ -64,27 +64,42 @@ public:
 	}
 
 	void AddString(char* val){
-		for(dword i = 0; i < strlen(val); i++)
-			Add<byte>((byte)val[i]);
+		memcpy(_Buffer + _Size, val, strlen(val));
+		_Size += strlen(val);
 	}
 
 	void AddBytes(byte* val, dword len){
-		for(dword i = 0; i < len; i++)
-			Add<byte>((byte)val[i]);
+		memcpy(_Buffer + _Size, val, len);
+		_Size += len;
 	} 
 	
 	void AddFixLenStr(char* str, int len){
 		int strleng = strlen(str);
 		if(strleng > len){
-			for(int i = 0; i < len; i++)
-				Add<byte>((byte)str[i]);
+			memcpy(_Buffer + _Size, str, len);
+			_Size += len;
 			return;
 		}
-		for(int i = 0; i < strleng; i++)
-			Add<byte>((byte)str[i]);
+		memcpy(_Buffer + _Size, str, strleng);
+		_Size += strleng;
 		int extra = len - strleng;
-		if(extra > 0)
-			Fill<byte>(0, extra);
+		if(extra > 0){
+			memset(_Buffer + _Size, 0, extra);
+			_Size += extra;
+		}
+	}
+
+	bool AddFile(char* path){
+		FILE* fh;
+		fopen_s(&fh, path, "rb");
+		if(!fh) return false;
+		fseek(fh, 0, SEEK_END);
+		long fileSize = ftell(fh);
+		fseek(fh, 0, SEEK_SET);
+		fread(_Buffer + _Size, fileSize, 1, fh);
+		_Size += fileSize;
+		fclose(fh);
+		return true;
 	}
 
 #ifdef TITAN_USING_ISC
