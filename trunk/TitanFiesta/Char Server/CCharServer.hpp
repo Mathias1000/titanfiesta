@@ -39,8 +39,8 @@ public:
 		if(pak->Size() > 0xFF){
 			pak->Set<byte>(0, 0, 0);
 			memcpy(pak->Buffer() + 3, pak->Buffer() + 1, pak->Size() - 1);
-			pak->Set<word>(pak->Size() -  1, 1, 0);
-			pak->Size(pak->Size() + 3);
+			pak->Size(pak->Size() + 2);
+			pak->Set<word>(pak->Size() -  3, 1, 0);
 		}else{
 			pak->Set<byte>(pak->Size() - 1,0,0);
 		}
@@ -75,7 +75,6 @@ public:
 	void ReceivedISCPacket( CISCPacket* pak );
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 	PACKETHANDLER(pakUserLogin);
-	PACKETHANDLER(pakCharList);
 	PACKETHANDLER(pakCreateChar);
 	PACKETHANDLER(pakDeleteChar);
 	PACKETHANDLER(pakSelectChar);
@@ -85,6 +84,8 @@ public:
 	PACKETHANDLER(pak700e);
 	PACKETHANDLER(pak700a);
 	PACKETHANDLER(pak7c06);
+
+	void SendCharList(CCharClient* thisclient);
 
 	CServerData* GetServerByID(dword id){		
 		CServerData* retServ = NULL;

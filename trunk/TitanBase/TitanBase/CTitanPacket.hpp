@@ -233,7 +233,7 @@ public:
 		return _Buffer;
 	}
 protected:
-	byte _Buffer[1024];
+	byte _Buffer[0x8000];
 	dword _Size;
 	dword _Command;
 	dword _CurPos;

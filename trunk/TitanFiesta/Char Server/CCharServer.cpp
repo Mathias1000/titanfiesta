@@ -68,10 +68,6 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			SendPacket(thisclient, &pakout);
 		}
 		break;
-		case 0x827:
-			if(thisclient->id != -1)
-				PACKETRECV(pakCharList);
-		break;
 		case 0x1401:
 			if(thisclient->id != -1)
 				PACKETRECV(pakCreateChar);
@@ -109,9 +105,8 @@ const static byte packet0826[130] = {
 PACKETHANDLER(pak7002) {
 	FILE* fh = fopen("7003.pak", "rb");
 	CPacket pakout(0x7003);
-		while (!feof(fh)) {
-			pakout.Add<byte>(fgetc(fh));
-		}
+	int tmp;
+	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
 	SendPacket(thisclient, &pakout);
 	fclose(fh);
 	return true;
@@ -120,9 +115,8 @@ PACKETHANDLER(pak7002) {
 PACKETHANDLER(pak7004) {
 	FILE* fh = fopen("7005.pak", "rb");
 	CPacket pakout(0x7005);
-		while (!feof(fh)) {
-			pakout.Add<byte>(fgetc(fh));
-		}
+	int tmp;
+	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
 	SendPacket(thisclient, &pakout);
 	fclose(fh);
 	return true;
@@ -131,9 +125,8 @@ PACKETHANDLER(pak7004) {
 PACKETHANDLER(pak700c) {
 	FILE* fh = fopen("700d.pak", "rb");
 	CPacket pakout(0x700d);
-		while (!feof(fh)) {
-			pakout.Add<byte>(fgetc(fh));
-		}
+	int tmp;
+	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
 	SendPacket(thisclient, &pakout);
 	fclose(fh);
 	return true;
@@ -142,9 +135,8 @@ PACKETHANDLER(pak700c) {
 PACKETHANDLER(pak700e) {
 	FILE* fh = fopen("700f.pak", "rb");
 	CPacket pakout(0x700F);
-		while (!feof(fh)) {
-			pakout.Add<byte>(fgetc(fh));
-		}
+	int tmp;
+	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
 	SendPacket(thisclient, &pakout);
 	fclose(fh);
 	return true;
@@ -153,9 +145,8 @@ PACKETHANDLER(pak700e) {
 PACKETHANDLER(pak700a) {
 	FILE* fh = fopen("700b.pak", "rb");
 	CPacket pakout(0x700b);
-		while (!feof(fh)) {
-			pakout.Add<byte>(fgetc(fh));
-		}
+	int tmp;
+	while ( (tmp=fgetc(fh)) != EOF ) pakout.Add<byte>(tmp);
 	SendPacket(thisclient, &pakout);
 	fclose(fh);
 	return true;
@@ -273,52 +264,6 @@ PACKETHANDLER(pakCreateChar){
 	return true;
 }
 
-PACKETHANDLER(pakCharList){
-	// Select characters
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face` FROM `characters` WHERE `owner`='%s'", thisclient->username);
-	if(!result){
-		Log(MSG_DEBUG, "SELECT returned bollocks");
-		return false;
-	}
-	
-	MYSQL_ROW row;
-	CPacket pakout(0xC14);
-	Log(MSG_DEBUG, "LoginID: %d", thisclient->loginid);
-	pakout.Add<word>(thisclient->loginid); // Unique ID
-	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
-	while (row = mysql_fetch_row(result)) {
-		pakout.Add<word>(atoi(row[0])); // Character ID
-		pakout.Add<word>(0x000f); // Name length (Always 16?)
-		pakout.AddFixLenStr(row[1], 0x10); // Name
-		pakout.Add<word>(atoi(row[2])); // Level
-		pakout.Add<byte>(atoi(row[3])); // Char slot
-		pakout.AddFixLenStr(row[4], 0x0D); // Current town (map folder name)
-		pakout.Add<dword>(0x00); // Unk [Changes every login]
-		pakout.Add<byte>(atoi(row[5]) | (atoi(row[6]) << 7));//Prof | Gender
-		pakout.Add<byte>(atoi(row[7]));//Hair Style
-		pakout.Add<byte>(atoi(row[8]));//Hair Colour
-		pakout.Add<byte>(atoi(row[9]));//Face Style
-		// Wiping it to default armor for testing
-		pakout.Add<word>(0xFFFF); //Weapon [Not Shown]
-		pakout.Add<word>(0xFFFF);//Body Armour
-		pakout.Add<word>(0xFFFF); //Shield [Not Shown]
-		pakout.Add<word>(0xFFFF); //Leg Armour
-		pakout.Add<word>(0xFFFF); //Boot Armour
-		pakout.Fill<byte>(0xFF, 0x1C);
-		pakout.Add<word>(0x0); // 0x0060 on my main char
-		pakout.Add<byte>(0xf0);
-		pakout.Add<dword>(0xffffffff);
-		pakout.Fill<byte>(0x00, 12);
-		pakout.Add<dword>(0x0cdc); // Pos?
-		pakout.Add<dword>(0x1bc9); // Pos?
-		pakout.Add<word>(0xdb78); // ?
-		pakout.Add<word>(0xc315); // ?
-	}
-	db->QFree(result);
-	SendPacket(thisclient, &pakout);
-	return true;
-}
-
 PACKETHANDLER(pakUserLogin){
 	char username[0x13];
 	username[0x12] = 0;
@@ -354,13 +299,14 @@ PACKETHANDLER(pakUserLogin){
 		thisclient->id = -1;
 		goto authFail;
 	}
-
-	{
+	db->QFree(result);
+	
+	SendCharList(thisclient);
+/*	{
 		CPacket pakout(0x0826);
 		pakout.AddBytes((byte*)packet0826, 130);
 		SendPacket(thisclient, &pakout);
-	}
-	db->QFree(result);
+	}*/
 	return true;
 authFail:
 	{
@@ -408,4 +354,48 @@ void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
 		case TITAN_ISC_UPDATEUSERCNT:
 		break;
 	}
+}
+
+void CCharServer::SendCharList(CCharClient* thisclient) {
+	// Select characters
+	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face` FROM `characters` WHERE `owner`='%s'", thisclient->username);
+	if(!result){
+		Log(MSG_DEBUG, "SELECT returned bollocks");
+		return;
+	}
+	
+	MYSQL_ROW row;
+	CPacket pakout(0xC14);
+	pakout.Add<word>(thisclient->loginid); // Unique ID
+	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
+	while (row = mysql_fetch_row(result)) {
+		pakout.Add<word>(atoi(row[0])); // Character ID
+		pakout.Add<word>(0x000f); // Name length (Always 16?)
+		pakout.AddFixLenStr(row[1], 0x10); // Name
+		pakout.Add<word>(atoi(row[2])); // Level
+		pakout.Add<byte>(atoi(row[3])); // Char slot
+		pakout.AddFixLenStr(row[4], 0x0D); // Current town (map folder name)
+		pakout.Add<dword>(0x00); // Unk [Changes every login]
+		pakout.Add<byte>(atoi(row[5]) | (atoi(row[6]) << 7));//Prof | Gender
+		pakout.Add<byte>(atoi(row[7]));//Hair Style
+		pakout.Add<byte>(atoi(row[8]));//Hair Colour
+		pakout.Add<byte>(atoi(row[9]));//Face Style
+		// Wiping it to default armor for testing
+		pakout.Add<word>(0xFFFF); //Weapon [Not Shown]
+		pakout.Add<word>(0xFFFF);//Body Armour
+		pakout.Add<word>(0xFFFF); //Shield [Not Shown]
+		pakout.Add<word>(0xFFFF); //Leg Armour
+		pakout.Add<word>(0xFFFF); //Boot Armour
+		pakout.Fill<byte>(0xFF, 0x1C);
+		pakout.Add<word>(0x0); // 0x0060 on my main char
+		pakout.Add<byte>(0xf0);
+		pakout.Add<dword>(0xffffffff);
+		pakout.Fill<byte>(0x00, 12);
+		pakout.Add<dword>(0x0cdc); // Pos?
+		pakout.Add<dword>(0x1bc9); // Pos?
+		pakout.Add<word>(0xdb78); // ?
+		pakout.Add<word>(0xc315); // ?
+	}
+	db->QFree(result);
+	SendPacket(thisclient, &pakout);
 }

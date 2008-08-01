@@ -108,33 +108,47 @@ PACKETHANDLER(pakUserLogin){
 		CPacket pakout(0x1038);
 			pakout.Add<word>(thisclient->charid);
 			pakout.Add<word>(0x000f);
-			pakout.AddFixLenStr(thisclient->username, 0x10);
+			pakout.AddFixLenStr(thisclient->charname, 0x10);
 			pakout.Add<byte>(thisclient->lastslot); // Slot
 			pakout.Add<byte>(0x01); // Level
 			pakout.Add<qword>(0x00); // Total Exp
-			pakout.Add<dword>(0x00); // Unk
-			pakout.Add<word>(0x000e); // 0x15 for Ex
-			pakout.Add<word>(0x000a); // 0x21 for Ex
-			pakout.Add<dword>(0x002e); // HP
+			pakout.Add<dword>(0x00); // Unk - Doesn't appear to change anything
+			pakout.Add<word>(0x000f); // HP Stones
+			pakout.Add<word>(0x000b); // SP Stones
+			pakout.Add<dword>(0x002E); // HP
 			pakout.Add<dword>(0x0020); // SP
 			pakout.Add<dword>(0x0000); // Fame
 			pakout.Add<qword>(0x1d1a); // Money
 			pakout.AddFixLenStr("Rou", 0x0C); // Cur map
 			pakout.Add<dword>(0x251e); // Pos X
 			pakout.Add<dword>(0x0cb9); // Pos Y
-			pakout.Add<byte>(0x5a); // No farking clue 0x5A for both
-			pakout.Add<byte>(0x00); // STR+
-			pakout.Add<byte>(0x00); // END+
-			pakout.Add<byte>(0x00); // DEX+
-			pakout.Add<byte>(0x00); // INT+
-			pakout.Add<byte>(0x00); // SPR+
-			pakout.Fill<byte>(0x00, 0x0D); // Unk
+			pakout.Add<byte>(0x5a); // No farking clue 0x5A for both - Doesn't appear to change anything
+			pakout.Add<byte>(0x01); // STR+
+			pakout.Add<byte>(0x02); // END+
+			pakout.Add<byte>(0x03); // DEX+
+			pakout.Add<byte>(0x04); // INT+
+			pakout.Add<byte>(0x05); // SPR+
+
+			//  If you see anything ingame that matches any of these numbers, update this
+			pakout.Add<byte>(0x06);
+			pakout.Add<byte>(0x07);
+			pakout.Add<dword>(0x00); // Kill Points
+			pakout.Add<byte>(0x0c);
+			pakout.Add<byte>(0x0d);
+			pakout.Add<byte>(0x0e);
+			pakout.Add<byte>(0x0f);
+			pakout.Add<byte>(0x10);
+			pakout.Add<byte>(0x11);
+			pakout.Add<byte>(0x12);
 		SendPacket(thisclient, &pakout);
 	}
 
-	{	
+	{	// Look info
 		CPacket pakout(0x1039);
-			pakout.Add<dword>(0x0121);
+			pakout.Add<byte>(0x85); // Class
+			pakout.Add<byte>(0x01); // Hair
+			pakout.Add<byte>(0x01); // Hair Color
+			pakout.Add<byte>(0x00); // Face
 		SendPacket(thisclient, &pakout);
 	}
 
@@ -165,7 +179,7 @@ PACKETHANDLER(pakUserLogin){
 			pakout.Add<word>(0x18D8); // Skill ID [Inferno01]
 			pakout.Add<word>(0x0000); // unk
 			pakout.Add<word>(0x0000); // Unk
-			pakout.Add<word>(0x0000); // Empowerment (dmg | (sp << 4) | (time << 8) | (cool << 12)
+			pakout.Add<word>(0x5432); // Empowerment (dmg | (sp << 4) | (time << 8) | (cool << 12)
 			pakout.Add<word>(0x000F); // Uses
 			pakout.Add<word>(0x0000); // Unk
 		}
@@ -209,11 +223,19 @@ PACKETHANDLER(pakUserLogin){
 		SendPacket(thisclient, &pakout);
 	}
 
-	{
+	{	// Titles - I can't figure this shit out, Wiz Mage works, nothing else will, wtf?
 		CPacket pakout(0x1049);
-			pakout.Add<word>(0x00);
-			pakout.Add<word>(0x00);
-			pakout.Add<word>(0x00);
+			pakout.Add<byte>(0x30); // Current title
+			pakout.Add<byte>(0x01); // Current title#?
+			pakout.Add<word>(0x0000);
+			pakout.Add<word>(0x0004); // Count
+			{ // for each Count
+				pakout.Add<byte>(0x30); // Title ID
+				pakout.Add<byte>(0x80); // ???
+			}
+			pakout.Add<word>(0xC10A);
+			pakout.Add<word>(0xC130);
+			pakout.Add<word>(0x8017);
 		SendPacket(thisclient, &pakout);
 	}
 
