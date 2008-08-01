@@ -140,12 +140,16 @@ PACKETHANDLER(pakTokenLogin){
 		pakout.AddFixLenStr(username, 0x12);
 		rwmServerList.acquireReadLock();
 		pakout.Add<byte>(ServerList.size());
+		dword serverCount = 0;
 		for(dword i = 0; i < ServerList.size(); i++){
+			if (ServerList[i]->type != 2) continue;
 			pakout.Add<byte>(ServerList[i]->id);
 			pakout.AddFixLenStr(ServerList[i]->name, 0x10);
 			pakout.Add<byte>(ServerList[i]->status);
+			serverCount++;
 		}
 		rwmServerList.releaseReadLock();
+		pakout.Set<byte>(serverCount, 0x15, 0x00);
 		SendPacket(thisclient, &pakout);
 	}
 

@@ -14,8 +14,11 @@ public:
 	dword xorTableLoc;
 	char* username;
 	char* password;
+	char* charname;
 	int id;
+	int charid;
 	int accesslevel;
+	int lastslot;
 	int loginid;
 private:
 };
@@ -76,6 +79,8 @@ public:
 
 	void ReceivedISCPacket( CISCPacket* pak );
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
+
+	PACKETHANDLER(pakUserLogin);
 
 private:
 	CServerData ServerData;

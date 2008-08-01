@@ -78,6 +78,13 @@ public:
 	PACKETHANDLER(pakCharList);
 	PACKETHANDLER(pakCreateChar);
 	PACKETHANDLER(pakDeleteChar);
+	PACKETHANDLER(pakSelectChar);
+	PACKETHANDLER(pak7002);
+	PACKETHANDLER(pak7004);
+	PACKETHANDLER(pak700c);
+	PACKETHANDLER(pak700e);
+	PACKETHANDLER(pak700a);
+	PACKETHANDLER(pak7c06);
 
 	CServerData* GetServerByID(dword id){		
 		CServerData* retServ = NULL;
