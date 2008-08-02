@@ -1,0 +1,16 @@
+#include "main.h"
+#include "CCharServer.hpp"
+
+int main(int argc, char* argv[]) 
+{
+	CTitanIniReader ini("CharServer.ini");
+	CCharServer server;
+	server.Config.BindIp = ini.GetString("IP","Char Server","127.0.0.1");
+	server.Config.BindPort = ini.GetInt("Port","Char Server",9110);
+
+	server.Config.ISCIp = ini.GetString("IP","ISC Server","127.0.0.1");
+	server.Config.ISCPort = ini.GetInt("Port","ISC Server",1337);
+
+	server.Start();
+	return 0;
+}
