@@ -66,6 +66,26 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			case 0x202A:
 				PACKETRECV(pakEndRest);
 			break;
+			case 0x3c02:
+			{
+				byte btWho = pak->Read<byte>();
+				char* who;
+				if(btWho == 0)
+					who = "ExJam";
+				else if(btWho == 1)
+					who = "Drakia";
+				else if(btWho == 2)
+					who = "Brett";
+
+				char buffer[255];
+				sprintf_s(buffer, 255, "\"%s\" wants to have sex with %s!", thisclient->charname, who);
+				CPacket pakout(0x6402);
+				pakout.Add<byte>(11);
+				pakout.AddStringLen<byte>(buffer);
+				pakout.Add<byte>(0);
+				SendPacket(thisclient, &pakout);
+			}
+			break;
 			case 0x4822:
 				{
 					word skillId = pak->Read<word>();
@@ -165,8 +185,8 @@ PACKETHANDLER(pakChat){
 				return true;
 			}
 
-			for(dword i = 0; i < atoi(souljaNumber); i++){
-				CPacket pakout(0x1C0E);//deletes old player (so no bug in respawning player)
+			for(int i = 0; i < atoi(souljaNumber); i++){
+				CPacket pakout(0x1C0E);//deletes client id
 				pakout.Add<word>(0x3000 + i);//ClientID
 				SendPacket(thisclient, &pakout);
 			}
@@ -178,48 +198,69 @@ PACKETHANDLER(pakChat){
 			}
 
 			dword souljaCount = atoi(souljaNumber);
+			float angleIncrements = ((4.0 * atan( 1.0 )) * 2.0f) / float(souljaCount);
+			float rotationIncrements = 180.0f / float(souljaCount);
 			word clientIdStart = 0x3000;
 			dword xStart = 9110;
 			dword yStart = 3516;
 			char name[0x10];
-			dword i = 0;
 			CPacket pakout(0x1c07);
-			pakout.Add<byte>(souljaCount * souljaCount);
-			for(dword x = 0; x < souljaCount; x++){
-				for(dword y = 0; y < souljaCount; y++){
-					pakout.Add<word>(clientIdStart + i);//ClientID
-					sprintf_s(name, 0x10, "Soulja %d", i);
-					pakout.AddFixLenStr(name, 0x10);
-					pakout.Add<dword>(xStart + (x*20));//X
-					pakout.Add<dword>(yStart + (y*20));//Y
-					pakout.Add<byte>(0x00);//Starting Rotation
-					pakout.Add<byte>(0x01);//unk2
-					pakout.Add<byte>(0x01);//Is Visible?
-					pakout.Add<byte>(0x85);//Profession bollocks
-					pakout.Add<byte>(0x07);//hair
-					pakout.Add<byte>(0x01);//hcolour
-					pakout.Add<byte>(0x00);//face
-					pakout.Add<word>(0xFFFF);//weapon
-					pakout.Add<word>(0x89e4);//body
-					pakout.Add<word>(0xFFFF);//shield
-					pakout.Add<word>(0xFFFF);//pants
-					pakout.Add<word>(0xFFFF);//boots
-					pakout.Fill<byte>(0xFF, 0x1c);
-					pakout.Add<byte>(0x99);//Refine weapon << 4 | shield
-					pakout.Add<word>(0x9999);
-					pakout.Add<byte>(0x00);//0x25 nothing special
-					pakout.Add<byte>(26);//Current "Emote"
-					pakout.Add<word>(0x0000);//0x00 nothing?
-					pakout.Add<word>(0xFFFF);//TitleId
-					pakout.Add<word>(0x00);//Monster ID For Title
-					//0x27 bytes of bit array, oh joys.
-					pakout.Fill<byte>(0x00, 0x21);
-					pakout.Add<byte>(0x40);
-					pakout.Fill<byte>(0x00, 0x05);
-					pakout.Add<byte>(0x02);
-					i++;
-				}
+			pakout.Add<byte>(souljaCount);
+			for(dword i = 0; i < souljaCount; i++){
+				pakout.Add<word>(clientIdStart + i);//ClientID
+				sprintf_s(name, 0x10, "Soulja %d", i);
+				pakout.AddFixLenStr(name, 0x10);
+				pakout.Add<dword>(xStart + (cos(angleIncrements * float(i)) * float(50.0f)));//X
+				pakout.Add<dword>(yStart + (sin(angleIncrements * float(i)) * float(50.0f)));//Y
+				pakout.Add<byte>(180 - byte(rotationIncrements * float(i)));//Starting Rotation
+				pakout.Add<byte>(0x01);//unk2
+				pakout.Add<byte>(0x01);//Is Visible
+				pakout.Add<byte>(0x85);//Profession bollocks
+				pakout.Add<byte>(0x07);//hair
+				pakout.Add<byte>(0x01);//hcolour
+				pakout.Add<byte>(0x00);//face
+				pakout.Add<word>(0xFFFF);//weapon
+				pakout.Add<word>(0x8a45);//body
+				pakout.Add<word>(0xFFFF);//shield
+				pakout.Add<word>(0xFFFF);//pants
+				pakout.Add<word>(0xFFFF);//boots
+				pakout.Add<word>(0x7d89);//hat
+				pakout.Fill<byte>(0xFF, 0x1a);
+				pakout.Add<byte>(0x99);//Refine weapon << 4 | shield
+				pakout.Add<word>(0x9999);
+				pakout.Add<byte>(0x00);//0x25 nothing special
+				pakout.Add<byte>(26);//Current "Emote"
+				pakout.Add<word>(0x0000);//0x00 nothing?
+				pakout.Add<word>(0xFFFF);//TitleId
+				pakout.Add<word>(0x00);//Monster ID For Title
+				//0x27 bytes of bit array, oh joys.
+				pakout.Fill<byte>(0x00, 0x21);
+				pakout.Add<byte>(0x40);
+				pakout.Fill<byte>(0x00, 0x05);
+				pakout.Add<byte>(0x02);
 			}
+			SendPacket(thisclient, &pakout);
+			{
+				CPacket pakout(0x6402);
+				pakout.Add<byte>(11);
+				pakout.AddStringLen<byte>("CRANK DAT SOULJA BOY");
+				pakout.Add<byte>(0);
+				SendPacket(thisclient, &pakout);
+			}
+		}else if(_strcmpi(command, "ask") == 0){
+			CPacket pakout(0x3c01);
+			pakout.AddFixLenStr("Who would you like to have sex with?", 0x40);
+			pakout.Add<byte>(0x03);//Answer Count
+
+			pakout.Add<byte>(0x00);
+			pakout.AddFixLenStr("ExJam", 0x20);
+
+			pakout.Add<byte>(0x01);
+			pakout.AddFixLenStr("Drakia", 0x20);
+
+			pakout.Add<byte>(0x02);
+			pakout.AddFixLenStr("Brett", 0x20);
+
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "drop") == 0){
 			char* itemId = strtok_s(NULL, " ", &context);
@@ -264,8 +305,7 @@ PACKETHANDLER(pakChat){
 			char* text = origText + strlen("&gmsay ");
 			CPacket pakout(0x6402);
 			pakout.Add<byte>(11);
-			pakout.Add<byte>(strlen(text));
-			pakout.AddString(text);
+			pakout.AddStringLen<byte>(text);
 			pakout.Add<byte>(0);
 			SendPacket(thisclient, &pakout);
 		}
