@@ -185,13 +185,14 @@ PACKETHANDLER(pakChat){
 				return true;
 			}
 
-			for(int i = 0; i < strtoul(souljaNumber, NULL, 0); i++){
+			for(dword i = 0; i < strtoul(souljaNumber, NULL, 0); i++){
 				CPacket pakout(0x1C0E);//deletes client id
 				pakout.Add<word>(0x3000 + i);//ClientID
 				SendPacket(thisclient, &pakout);
 			}
 		}else if(_strcmpi(command, "soulja") == 0){
 			char* souljaNumber = strtok_s(NULL, " ", &context);
+			char* txtRadius = strtok_s(NULL, " ", &context);
 			if(souljaNumber == NULL){
 				Log(MSG_DEBUG, "Not enough arguments for &soulja <soulja count>");
 				return true;
@@ -200,6 +201,7 @@ PACKETHANDLER(pakChat){
 			dword souljaCount = strtoul(souljaNumber, NULL, 0);
 			float angleIncrements = ((4.0 * atan( 1.0 )) * 2.0f) / float(souljaCount);
 			float rotationIncrements = 180.0f / float(souljaCount);
+			float radius = (txtRadius == NULL)?50.0f:float(atoi(txtRadius));
 			word clientIdStart = 0x3000;
 			dword xStart = 9110;
 			dword yStart = 3516;
@@ -210,8 +212,8 @@ PACKETHANDLER(pakChat){
 				pakout.Add<word>(clientIdStart + i);//ClientID
 				sprintf_s(name, 0x10, "Soulja %d", i);
 				pakout.AddFixLenStr(name, 0x10);
-				pakout.Add<dword>(xStart + (cos(angleIncrements * float(i)) * float(50.0f)));//X
-				pakout.Add<dword>(yStart + (sin(angleIncrements * float(i)) * float(50.0f)));//Y
+				pakout.Add<dword>(xStart + (cos(angleIncrements * float(i)) * float(radius)));//X
+				pakout.Add<dword>(yStart + (sin(angleIncrements * float(i)) * float(radius)));//Y
 				pakout.Add<byte>(180 - byte(rotationIncrements * float(i)));//Starting Rotation
 				pakout.Add<byte>(0x01);//unk2
 				pakout.Add<byte>(0x01);//Is Visible
