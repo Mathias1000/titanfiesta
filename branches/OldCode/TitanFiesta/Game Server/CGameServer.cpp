@@ -160,8 +160,8 @@ PACKETHANDLER(pakChat){
 				return true;
 			}
 			CPacket pakout(0x6004);
-			pakout.Add<byte>(atoi(titleId));
-			pakout.Add<byte>(0x80 | atoi(titleLevel));
+			pakout.Add<byte>(strtoul(titleId, NULL, 0));
+			pakout.Add<byte>(0x80 | strtoul(titleLevel, NULL, 0));
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "mon") == 0){
 			char* monId = strtok_s(NULL, " ", &context);
@@ -172,7 +172,7 @@ PACKETHANDLER(pakChat){
 			 
 			CPacket pakout(0x1C08);
 			pakout.Add<word>(0x1336);
-			pakout.Add<word>(atoi(monId));
+			pakout.Add<word>(strtoul(monId, NULL, 0));
 			pakout.Add<dword>(0x251e);
 			pakout.Add<dword>(0x0cb9);
 			pakout.Add<dword>(1337);
@@ -185,7 +185,7 @@ PACKETHANDLER(pakChat){
 				return true;
 			}
 
-			for(int i = 0; i < atoi(souljaNumber); i++){
+			for(int i = 0; i < strtoul(souljaNumber, NULL, 0); i++){
 				CPacket pakout(0x1C0E);//deletes client id
 				pakout.Add<word>(0x3000 + i);//ClientID
 				SendPacket(thisclient, &pakout);
@@ -197,7 +197,7 @@ PACKETHANDLER(pakChat){
 				return true;
 			}
 
-			dword souljaCount = atoi(souljaNumber);
+			dword souljaCount = strtoul(souljaNumber, NULL, 0);
 			float angleIncrements = ((4.0 * atan( 1.0 )) * 2.0f) / float(souljaCount);
 			float rotationIncrements = 180.0f / float(souljaCount);
 			word clientIdStart = 0x3000;
@@ -271,7 +271,7 @@ PACKETHANDLER(pakChat){
 
 			CPacket pakout(0x1c0A);
 			pakout.Add<word>(0x1335);
-			pakout.Add<word>(atoi(itemId));
+			pakout.Add<word>(strtoul(itemId, NULL, 0));
 			pakout.Add<dword>(0x251e);
 			pakout.Add<dword>(0x0cb9);
 			pakout.Add<byte>(0x60);
@@ -288,7 +288,7 @@ PACKETHANDLER(pakChat){
 				CPacket pakout(0x3001);
 				pakout.Add<word>(0x9009);
 				pakout.Add<word>(0x9009);
-				pakout.Add<word>(atoi(itemId));
+				pakout.Add<word>(strtoul(itemId, NULL, 0));
 				pakout.Add<dword>(1);//Item Count
 				pakout.Add<word>(0);
 				pakout.Add<byte>(1);
@@ -296,7 +296,7 @@ PACKETHANDLER(pakChat){
 			}
 			{
 				CPacket pakout(0x300A);
-				pakout.Add<word>(atoi(itemId));
+				pakout.Add<word>(strtoul(itemId, NULL, 0));
 				pakout.Add<dword>(1);//Item Count
 				pakout.Add<word>(0x0341);
 				SendPacket(thisclient, &pakout);
@@ -308,6 +308,45 @@ PACKETHANDLER(pakChat){
 			pakout.AddStringLen<byte>(text);
 			pakout.Add<byte>(0);
 			SendPacket(thisclient, &pakout);
+		}else if(_strcmpi(command, "equip") == 0){
+			char* itemId = strtok_s(NULL, " ", &context);
+			char* slotId = strtok_s(NULL, " ", &context);
+			char* refineId = strtok_s(NULL, " ", &context);
+			if(itemId == NULL || slotId == NULL){
+				Log(MSG_DEBUG, "Not enough arguments for &weapon <weapon id> |<slot id> (12)| |<refine id> (9)|");
+				return true;
+			}
+			//34 02 30 0F 90 0C 08 07 03 00 00 FF FF 00 00 00 00 FF FF 00 00 00 00 FF FF 00 00 00 00 FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 
+			{
+				CPacket pakout(0x3002);
+				pakout.Add<byte>(0x0F);
+				pakout.Add<byte>(0x90);
+
+				pakout.Add<byte>(strtoul(slotId, NULL, 0));//'Slot'/'Item Type' 0x0C for Weapon, 0x0A for Shield/Bow
+				pakout.Add<word>(strtoul(itemId, NULL, 0));//Item
+				pakout.Add<byte>((refineId == NULL)?9:strtoul(refineId, NULL, 0));//Refine
+				pakout.Add<word>(0x01);
+
+				for(dword i = 0; i < 4; i++){
+					pakout.Add<word>(0xFFFF);
+					pakout.Add<dword>(0x0);
+				}
+
+				pakout.Fill<byte>(0, 0x11);
+				pakout.Add<byte>(0x01);
+				SendPacket(thisclient, &pakout);
+			}
+			{
+				//0C 80 0F 90 FF FF 
+				CPacket pakout(0x3001);
+				pakout.Add<byte>(0x0C);
+				pakout.Add<byte>(0x80);
+				pakout.Add<byte>(0x0F);
+				pakout.Add<byte>(0x90);
+				pakout.Add<byte>(0xFF);
+				pakout.Add<byte>(0xFF);
+				SendPacket(thisclient, &pakout);
+			}
 		}
 	}else{
 		CPacket pakout(0x2002);

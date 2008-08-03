@@ -7,6 +7,36 @@ typedef unsigned __int16 word;
 typedef unsigned __int32 dword;
 #include "CTitanFile.hpp"
 
+std::string ReplaceCharInString(  
+    const std::string & source, 
+    char charToReplace, 
+    const std::string replaceString 
+    ) 
+{ 
+    std::string result; 
+ 
+    // For each character in source string: 
+    const char * pch = source.c_str(); 
+    while ( *pch != '\0' ) 
+    { 
+        // Found character to be replaced? 
+        if ( *pch == charToReplace ) 
+        { 
+            result += replaceString; 
+        } 
+        else 
+        { 
+            // Just copy original character 
+            result += (*pch); 
+        } 
+ 
+        // Move to next character 
+        ++pch; 
+    } 
+ 
+    return result; 
+} 
+ 
 class CSHNReader
 {
 public:
@@ -19,61 +49,133 @@ public:
 	CSHNReader(){}
 	~CSHNReader(){}
 
-	void Open(char* path){
+	void Open(char* path, char* tablename){
 		CTitanFile fh(path, "rb");
 		fh.Skip(0x28);
 		rows = fh.Read<dword>();
 		fh.Skip(4);
 		dword cols = fh.Read<dword>();
+		/*
+		CREATE TABLE `characters` (
+			`id` int(11) NOT NULL auto_increment,
+			`owner` varchar(16) NOT NULL,
+			`charname` varchar(16) NOT NULL,
+			`slot` tinyint(4) NOT NULL default '0',
+			`map` varchar(12) NOT NULL default 'Rou',
+			`money` bigint(20) NOT NULL default '0',
+			`level` int(11) NOT NULL default '1',
+			`maxhp` int(11) NOT NULL default '1',
+			`curhp` int(11) NOT NULL default '1',
+			`maxsp` int(11) NOT NULL default '1',
+			`cursp` int(11) NOT NULL default '1',
+			`exp` bigint(20) NOT NULL default '0',
+			`fame` bigint(20) NOT NULL default '0',
+			`profession` int(11) NOT NULL default '0',
+			`ismale` tinyint(1) NOT NULL default '0',
+			`hair` int(11) NOT NULL default '0',
+			`haircolor` int(11) NOT NULL default '0',
+			`face` int(11) NOT NULL default '0',
+			PRIMARY KEY  (`id`)
+		) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=2 ;
+		*/
+		printf("CREATE TABLE `%s` (\n", tablename);
 		for(dword i = 0; i < cols; i++){
 			SSHNColumn* curCol = reinterpret_cast<SSHNColumn*>(fh.ReadBytes(0x38));
-			printf("Column Name: %s Type: %d Size: %d\n", curCol->name, curCol->type, curCol->columnSize);
+			printf("`%s`", curCol->name);
+			switch(curCol->type){
+				case 1:
+					printf(" tinyint(1) NOT NULL");
+				break;
+				case 2:
+					printf(" smallint(2) UNSIGNED NOT NULL");
+				break;
+				case 3:
+					printf(" int(4) NOT NULL");
+				break;
+				case 9:
+					printf(" char(%d) NOT NULL", curCol->columnSize);
+				break;
+				case 11:
+					printf(" int(4) NOT NULL");
+				break;
+				case 18:
+					printf(" int(4) NOT NULL");
+				break;
+				case 26:
+					printf(" varchar(255) NOT NULL");
+				break;
+				case 27:
+					printf(" int(4) NOT NULL");
+				break;
+			}
+			if(i < cols - 1)
+				printf(",\n");
+			else
+				printf("\n");
 			columns.push_back(curCol);
 		}
+		printf(") ENGINE=MyISAM  DEFAULT CHARSET=utf8 ;\n\n");
+
+		const int rowLimit = 100;
 		for(dword i = 0; i < rows; i++){
 			word rowSize = fh.Read<word>();
+			if(i % rowLimit == 0)
+				printf("INSERT INTO `%s` VALUES ", tablename);
+			printf(" (", tablename);
 			for(dword j = 0; j < columns.size(); j++){
 				SSHNColumn* curCol = columns[j];
 				switch(curCol->type){
 					case 1:
-						if(curCol->columnSize != 1){
-							printf("curCol->Type == 1 && curCol->columnSize == %d\n", curCol->columnSize);
-						}
-						printf("%02x ", fh.Read<byte>());
+						printf("%d", fh.Read<byte>());
 					break;
 					case 2:
-						if(curCol->columnSize != 2){
-							printf("curCol->Type == 2 && curCol->columnSize == %d\n", curCol->columnSize);
-						}
-						printf("%04x ", fh.Read<word>());
+						printf("%d", fh.Read<word>());
 					break;
 					case 3:
-						printf("%08x ", fh.Read<dword>());
+						printf("%d", fh.Read<dword>());
 					break;
 					case 9:
-						printf("%s ", fh.ReadBytes(curCol->columnSize));
+					{
+						char* tmp = fh.ReadString(curCol->columnSize);
+						std::string curStr;
+						curStr.assign(tmp);
+						curStr = ReplaceCharInString(curStr, '\'', "\\'");
+						printf("'%s'", curStr.c_str());
+						delete [] tmp;
+					}
 					break;
 					case 11:
-						printf("%08x ", fh.Read<dword>());
+						printf("%d", fh.Read<dword>());
 					break;
 					case 18:
-						printf("%08x ", fh.Read<dword>());
+						printf("%d", fh.Read<dword>());
 					break;
 					case 26:
-						printf("%s ", fh.ReadNullString());
+					{
+						char* tmp = fh.ReadNullString();
+						std::string curStr;
+						curStr.assign(tmp);
+						curStr = ReplaceCharInString(curStr, '\'', "\\'");
+						printf("'%s'", curStr.c_str());
+						delete [] tmp;
+					}
 					break;
 					case 27:
-						if(curCol->columnSize != 4){
-							printf("curCol->Type == 27 && curCol->columnSize == %d\n", curCol->columnSize);
-						}
-						printf("%08x ", fh.Read<dword>());
+						printf("%d", fh.Read<dword>());
 					break;
 					default:
-						printf("\n====WARNING UNKNOWN TYPE %d====\n", curCol->type);
 						fh.Skip(curCol->columnSize);
 				}
+				
+				if(j < cols - 1)
+					printf(", ");
+				else
+					printf(" ");
 			}
-			printf("\n");
+			if(i >= rows - 1 || (i % rowLimit) >= rowLimit - 1)
+				printf(");\n\n");
+			else
+				printf("),\n");
 		}
 		fh.Close();
 	}
@@ -83,7 +185,7 @@ private:
 };
 
 int main(int argc, char** argv){
-	if(argc < 2){
+	if(argc < 3){
 		return 0;
 	}
 	FILE* fh;
@@ -140,7 +242,7 @@ int main(int argc, char** argv){
 		fclose(fh);
 		
 		CSHNReader reader;
-		reader.Open(tempPath);
+		reader.Open(tempPath, argv[2]);
 	}
 
 	return 0;
