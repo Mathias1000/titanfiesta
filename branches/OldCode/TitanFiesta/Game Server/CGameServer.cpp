@@ -158,41 +158,68 @@ PACKETHANDLER(pakChat){
 			pakout.Add<dword>(1337);
 			pakout.Fill<byte>(0, 0x21);
 			SendPacket(thisclient, &pakout);
-		}else if(_strcmpi(command, "player") == 0){
-			char* weaponId = strtok_s(NULL, " ", &context);
-			if(weaponId == NULL){
-				Log(MSG_DEBUG, "Not enough arguments for &player");
+		}else if(_strcmpi(command, "delsoulja") == 0){
+			char* souljaNumber = strtok_s(NULL, " ", &context);
+			if(souljaNumber == NULL){
+				Log(MSG_DEBUG, "Not enough arguments for &delsoulja <soulja count>");
 				return true;
 			}
-			CPacket pakout(0x1c06);
-			pakout.Add<word>(0x3459);//ClientID
-			pakout.AddFixLenStr("Drakia", 0x10);
-			pakout.Add<dword>(0x251e);//X
-			pakout.Add<dword>(0x0cb9);//Y
-			pakout.Add<byte>(0x5a);//unk1
-			pakout.Add<byte>(0x01);//unk2
-			pakout.Add<byte>(0x01);//unk3
-			pakout.Add<byte>(0x85);//Profession bollocks
-			pakout.Add<byte>(0x07);//hair
-			pakout.Add<byte>(0x01);//hcolour
-			pakout.Add<byte>(0x00);//face
-			pakout.Add<word>(atoi(weaponId));//weapon
-			pakout.Add<word>(0x03);//item what
-			pakout.Add<word>(0xC9);//item what
-			pakout.Add<word>(0x06);//item what
-			pakout.Add<word>(0x04);//item what
-			pakout.Fill<byte>(0xFF, 0x1c);//gay porn?
-			pakout.Add<byte>(0x99);//Refine weapon << 4 | shield
-			pakout.Add<word>(0x00);
-			pakout.Add<byte>(0x25);
-			pakout.Add<byte>(0xFF);
-			pakout.Add<word>(0x00);
-			pakout.Add<word>(0x0A);
-			pakout.Add<word>(0x08);
-			pakout.Fill<byte>(0x00, 0x21);
-			pakout.Add<dword>(0x10);
-			pakout.Add<word>(0x00);
-			pakout.Add<byte>(0x02);
+
+			for(dword i = 0; i < atoi(souljaNumber); i++){
+				CPacket pakout(0x1C0E);//deletes old player (so no bug in respawning player)
+				pakout.Add<word>(0x3000 + i);//ClientID
+				SendPacket(thisclient, &pakout);
+			}
+		}else if(_strcmpi(command, "soulja") == 0){
+			char* souljaNumber = strtok_s(NULL, " ", &context);
+			if(souljaNumber == NULL){
+				Log(MSG_DEBUG, "Not enough arguments for &soulja <soulja count>");
+				return true;
+			}
+
+			dword souljaCount = atoi(souljaNumber);
+			word clientIdStart = 0x3000;
+			dword xStart = 9110;
+			dword yStart = 3516;
+			char name[0x10];
+			dword i = 0;
+			CPacket pakout(0x1c07);
+			pakout.Add<byte>(souljaCount * souljaCount);
+			for(dword x = 0; x < souljaCount; x++){
+				for(dword y = 0; y < souljaCount; y++){
+					pakout.Add<word>(clientIdStart + i);//ClientID
+					sprintf_s(name, 0x10, "Soulja %d", i);
+					pakout.AddFixLenStr(name, 0x10);
+					pakout.Add<dword>(xStart + (x*20));//X
+					pakout.Add<dword>(yStart + (y*20));//Y
+					pakout.Add<byte>(0x00);//Starting Rotation
+					pakout.Add<byte>(0x01);//unk2
+					pakout.Add<byte>(0x01);//Is Visible?
+					pakout.Add<byte>(0x85);//Profession bollocks
+					pakout.Add<byte>(0x07);//hair
+					pakout.Add<byte>(0x01);//hcolour
+					pakout.Add<byte>(0x00);//face
+					pakout.Add<word>(0xFFFF);//weapon
+					pakout.Add<word>(0x89e4);//body
+					pakout.Add<word>(0xFFFF);//shield
+					pakout.Add<word>(0xFFFF);//pants
+					pakout.Add<word>(0xFFFF);//boots
+					pakout.Fill<byte>(0xFF, 0x1c);
+					pakout.Add<byte>(0x99);//Refine weapon << 4 | shield
+					pakout.Add<word>(0x9999);
+					pakout.Add<byte>(0x00);//0x25 nothing special
+					pakout.Add<byte>(26);//Current "Emote"
+					pakout.Add<word>(0x0000);//0x00 nothing?
+					pakout.Add<word>(0xFFFF);//TitleId
+					pakout.Add<word>(0x00);//Monster ID For Title
+					//0x27 bytes of bit array, oh joys.
+					pakout.Fill<byte>(0x00, 0x21);
+					pakout.Add<byte>(0x40);
+					pakout.Fill<byte>(0x00, 0x05);
+					pakout.Add<byte>(0x02);
+					i++;
+				}
+			}
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "drop") == 0){
 			char* itemId = strtok_s(NULL, " ", &context);
@@ -329,7 +356,7 @@ PACKETHANDLER(pakUserLogin){
 			pakout.AddFixLenStr(row[9], 0x0C); // Cur map
 			pakout.Add<dword>(0x251e); // Pos X 9502
 			pakout.Add<dword>(0x0cb9); // Pos Y 3257
-			pakout.Add<byte>(0x5a); // No farking clue 0x5A for both - Doesn't appear to change anything
+			pakout.Add<byte>(0x5a); // Starting Rotation
 			pakout.Add<byte>(0x01); // STR+
 			pakout.Add<byte>(0x02); // END+
 			pakout.Add<byte>(0x03); // DEX+
