@@ -153,6 +153,8 @@ int main(int argc, char** argv){
 	CreateThread( NULL, 0, loginServerThread, NULL, 0, NULL);
 	loginServer->ClientThread();
 
+	delete loginServer;
+
 	if(charServer == NULL) goto finished;
 
 	if(!charServer->Connect(charServerIP, 9110, 0)){

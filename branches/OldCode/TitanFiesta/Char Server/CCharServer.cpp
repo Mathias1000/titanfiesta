@@ -5,7 +5,8 @@ bool CCharServer::OnServerReady(){
 	CTitanIniReader ini("CharServer.ini");
 	db = new CTitanSQL(ini.GetString("Server","MySQL","127.0.0.1"), ini.GetString("Username","MySQL","root"), ini.GetString("Password","MySQL",""), ini.GetString("Database","MySQL","titanfiesta"));
 	if(!db->Connect()){
-		 Log(MSG_STATUS, "Failed to connect to MYSQL Server");
+		 Log(MSG_ERROR, "Failed to connect to MYSQL Server");
+		 return false;
 	}else{
 		 Log(MSG_STATUS, "Connected to MYSQL Server");
 	}

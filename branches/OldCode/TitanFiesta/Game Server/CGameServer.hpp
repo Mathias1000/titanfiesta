@@ -1,6 +1,8 @@
 #define PACKETHANDLER(func) bool CGameServer::func( CGameClient* thisclient, CTitanPacket* pak )
 #define PACKETRECV(func) func(thisclient, pak)
 
+#include "CShn.hpp"
+
 class CGameClient : public CTitanClient
 {	
 public:
@@ -16,11 +18,11 @@ public:
 	char* password;
 	char* charname;
 	int id;
-	int charid;
+	word charid;
 	int accesslevel;
 	int lastslot;
 	int loginid;
-	int clientid;
+	word clientid;
 private:
 };
 
@@ -92,4 +94,5 @@ private:
 	CServerData ServerData;
 
 	CTitanSQL* db;
+	CShn* itemInfo;
 };

@@ -75,7 +75,7 @@ public:
 				StartWorldServer();
 			}
 			if(pak.command == 0x0807){
-				xorTableLoc = *reinterpret_cast<word*>(pak.buffer + 3);
+				xorTableLoc = *reinterpret_cast<byte*>(pak.buffer + 3);
 			}
 		}
 		SendClientPacket(&pak);

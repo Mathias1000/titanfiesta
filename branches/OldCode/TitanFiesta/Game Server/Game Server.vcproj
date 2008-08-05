@@ -190,12 +190,20 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CShn.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\main.h"
 				>
 			</File>
 			<Filter
 				Name="Common"
 				>
+				<File
+					RelativePath="..\Common\Common.hpp"
+					>
+				</File>
 				<File
 					RelativePath="..\Common\XorTable.h"
 					>

@@ -137,6 +137,24 @@ public:
 		return *((T*)&_Buffer[_CurPos - sizeof( T )]);
 	}
 
+	template <typename T> CTitanPacket& operator<<(T val){
+		*((T*)&_Buffer[_Size]) = val;
+		_Size += sizeof( T );
+		return (*this);
+	}
+
+	template <> CTitanPacket& operator<<(char* val){
+		memcpy(_Buffer + _Size, val, strlen(val));
+		_Size += strlen(val);
+		return (*this);
+	}
+
+	template <typename T> CTitanPacket& operator>>(T& val){
+		val = *reinterpret_cast<T*>(_Buffer + _CurPos);
+		_CurPos += sizeof( T );
+		return (*this);
+	}
+
 #ifdef TITAN_USING_CVECTOR2F
 	template <> CVector2F Read( )
 	{

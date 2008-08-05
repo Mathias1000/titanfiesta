@@ -5,7 +5,8 @@ bool CGameServer::OnServerReady(){
 	CTitanIniReader ini("GameServer.ini");
 	db = new CTitanSQL(ini.GetString("Server","MySQL","127.0.0.1"), ini.GetString("Username","MySQL","root"), ini.GetString("Password","MySQL",""), ini.GetString("Database","MySQL","titanfiesta"));
 	if(!db->Connect()){
-		Log(MSG_STATUS, "Failed to connect to MYSQL Server");
+		Log(MSG_ERROR, "Failed to connect to MYSQL Server");
+		return false;
 	}else{
 		Log(MSG_STATUS, "Connected to MYSQL Server");
 	}
@@ -24,6 +25,10 @@ bool CGameServer::OnServerReady(){
 	pakout.Add<CServerData*>( &ServerData );
 	SendISCPacket( &pakout );
 
+	itemInfo = new CShn();
+	if(!itemInfo->Open("ItemInfo.shn", 0)){
+		Log(MSG_ERROR, "Could not open 'ItemInfo.shn'");
+	}
 	return true;
 }
 
@@ -89,9 +94,9 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			case 0x4822:
 				{
 					word skillId = pak->Read<word>();
-				Log(MSG_DEBUG, "0x4822 Learn Production Skill -> id: %d", skillId);
-				//[Game]IN 06 23 48 AD 71 01 0B 
-				//[Game]IN 05 04 48 AD 71 00 
+					Log(MSG_DEBUG, "0x4822 Learn Production Skill -> id: %d", skillId);
+					//[Game]IN 06 23 48 AD 71 01 0B 
+					//[Game]IN 05 04 48 AD 71 00 
 					{
 						CPacket pakout(0x4823);
 						pakout.Add<word>(skillId);
@@ -144,10 +149,10 @@ PACKETHANDLER(pakRest){
 
 PACKETHANDLER(pakChat){
 	byte chatLen = pak->Read<byte>();
+	*(byte*)(pak->Buffer() + pak->Pos() + chatLen) = 0;
 	if(*(byte*)(pak->Buffer() + pak->Pos()) == '&'){
 		char origText[255];
-		memcpy(origText, pak->Buffer() + pak->Pos(), chatLen);
-		origText[chatLen] = 0;
+		memcpy(origText, pak->Buffer() + pak->Pos(), chatLen + 1);
 		char* command = (char*)(pak->Buffer() + pak->Pos() + 1);
 		*(command + chatLen - 1) = 0;
 		char* context;
@@ -336,7 +341,7 @@ PACKETHANDLER(pakChat){
 			char* slotId = strtok_s(NULL, " ", &context);
 			char* refineId = strtok_s(NULL, " ", &context);
 			if(itemId == NULL || slotId == NULL){
-				Log(MSG_DEBUG, "Not enough arguments for &weapon <weapon id> |<slot id> (12)| |<refine id> (9)|");
+				Log(MSG_DEBUG, "Not enough arguments for &equip <item id> <slot id> |<refine id> (9)|");
 				return true;
 			}
 			//34 02 30 0F 90 0C 08 07 03 00 00 FF FF 00 00 00 00 FF FF 00 00 00 00 FF FF 00 00 00 00 FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 
@@ -370,13 +375,26 @@ PACKETHANDLER(pakChat){
 				pakout.Add<byte>(0xFF);
 				SendPacket(thisclient, &pakout);
 			}
+		}else if(_strcmpi(command, "itemname") == 0){
+			char* itemId = strtok_s(NULL, " ", &context);
+			if(itemId == NULL){
+				Log(MSG_DEBUG, "Not enough arguments for &itemname <item id>");
+				return true;
+			}
+
+			char* itemName = itemInfo->GetStringId(strtoul(itemId, NULL, 0), 2);
+			CPacket pakout(0x2002);
+			pakout.Add<word>(thisclient->clientid);
+			pakout.Add<byte>(strlen(itemName));
+			pakout.Add<byte>(':');
+			pakout.AddBytes(reinterpret_cast<byte*>(itemName), strlen(itemName));
+			SendPacket(thisclient, &pakout);
 		}
 	}else{
+		//leet test kekeke
 		CPacket pakout(0x2002);
-		pakout.Add<word>(thisclient->clientid);
-		pakout.Add<byte>(chatLen);
-		pakout.Add<byte>(':');
-		pakout.AddBytes(pak->Buffer() + pak->Pos(), chatLen);
+		pakout << thisclient->clientid << chatLen << ':';
+		pakout << (char*)(pak->Buffer() + pak->Pos());
 		SendPacket(thisclient, &pakout);
 	}
 	return true;

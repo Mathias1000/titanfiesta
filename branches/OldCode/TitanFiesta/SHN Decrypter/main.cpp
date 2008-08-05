@@ -55,29 +55,6 @@ public:
 		rows = fh.Read<dword>();
 		fh.Skip(4);
 		dword cols = fh.Read<dword>();
-		/*
-		CREATE TABLE `characters` (
-			`id` int(11) NOT NULL auto_increment,
-			`owner` varchar(16) NOT NULL,
-			`charname` varchar(16) NOT NULL,
-			`slot` tinyint(4) NOT NULL default '0',
-			`map` varchar(12) NOT NULL default 'Rou',
-			`money` bigint(20) NOT NULL default '0',
-			`level` int(11) NOT NULL default '1',
-			`maxhp` int(11) NOT NULL default '1',
-			`curhp` int(11) NOT NULL default '1',
-			`maxsp` int(11) NOT NULL default '1',
-			`cursp` int(11) NOT NULL default '1',
-			`exp` bigint(20) NOT NULL default '0',
-			`fame` bigint(20) NOT NULL default '0',
-			`profession` int(11) NOT NULL default '0',
-			`ismale` tinyint(1) NOT NULL default '0',
-			`hair` int(11) NOT NULL default '0',
-			`haircolor` int(11) NOT NULL default '0',
-			`face` int(11) NOT NULL default '0',
-			PRIMARY KEY  (`id`)
-		) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=2 ;
-		*/
 		printf("CREATE TABLE `%s` (\n", tablename);
 		for(dword i = 0; i < cols; i++){
 			SSHNColumn* curCol = reinterpret_cast<SSHNColumn*>(fh.ReadBytes(0x38));

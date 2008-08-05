@@ -20,6 +20,7 @@ typedef char*					string;
 #define CLEAN_ARRAY( arr, size ) { for( dword arrpos = 0; arrpos<size; arrpos++ ) arr[arrpos] = 0; }
 #define DEL( val ) { if( val != NULL ) { delete val; val = NULL; } }
 #define DELARR( arr ) { if( arr != NULL ) { delete [] arr; arr = NULL; } }
+#define DEL2DARR( arr, size ) { if( arr != NULL ) { for(dword i = 0; i < size; i++){ delete arr[i]; } delete [] arr; arr = NULL; } }
 #define DELVEC( vector ) { for(dword vector_pos=0;vector_pos<vector.size();vector_pos++){ DEL( vector.at(vector_pos) ) } vector.clear(); }
 #define DELVECARR( vector ) { for(dword vector_pos=0;vector_pos<vector.size();vector_pos++){ DELARR( vector.at(vector_pos) ) } vector.clear(); }
 
