@@ -49,10 +49,10 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 				PACKETRECV(pakChat);
 			break;
 			case 0x2012:
-				Log(MSG_DEBUG, "0x2012 Stop Moving -> cX: %d cY: %d", pak->Read<dword>(), pak->Read<dword>());
+				Log(MSG_DEBUG, "0x2012 Stop Moving -> cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>());
 			break;
 			case 0x2019:
-				Log(MSG_DEBUG, "0x2019 Move Packet -> cX: %d cY: %d nX: %d nY: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
+				Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
 			break;
 			case 0x2020:
 				Log(MSG_DEBUG, "0x2020 Do Emote -> id: %d", pak->Read<byte>());
@@ -147,6 +147,7 @@ PACKETHANDLER(pakChat){
 	if(*(byte*)(pak->Buffer() + pak->Pos()) == '&'){
 		char origText[255];
 		memcpy(origText, pak->Buffer() + pak->Pos(), chatLen);
+		origText[chatLen] = 0;
 		char* command = (char*)(pak->Buffer() + pak->Pos() + 1);
 		*(command + chatLen - 1) = 0;
 		char* context;
@@ -309,6 +310,26 @@ PACKETHANDLER(pakChat){
 			pakout.Add<byte>(11);
 			pakout.AddStringLen<byte>(text);
 			pakout.Add<byte>(0);
+			SendPacket(thisclient, &pakout);
+		}else if(_strcmpi(command, "rest") == 0){
+			char* first = strtok_s(NULL, " ", &context);
+			char* second = strtok_s(NULL, " ", &context);
+			if (first == NULL || second == NULL) return true;
+			CPacket pakout(0x202B);
+			pakout.Add<byte>(strtoul(first, NULL, 0));
+			pakout.Add<byte>(strtoul(second, NULL, 0));
+			SendPacket(thisclient, &pakout);
+		}else if(_strcmpi(command, "tele") == 0){
+			char* teleX = strtok_s(NULL, " ", &context);
+			char* teleY = strtok_s(NULL, " ", &context);
+			if(teleX == NULL || teleY == NULL){
+				Log(MSG_DEBUG, "Not enough arguments for &tele <teleX> <teleY>");
+				return true;
+			}
+			Log(MSG_DEBUG, "Tele nX: %d nY: %d", strtoul(teleX, NULL, 0), strtoul(teleY, NULL, 0));
+			CPacket pakout(0x201b);
+			pakout.Add<dword>(strtoul(teleY, NULL, 0));
+			pakout.Add<dword>(strtoul(teleX, NULL, 0));
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "equip") == 0){
 			char* itemId = strtok_s(NULL, " ", &context);

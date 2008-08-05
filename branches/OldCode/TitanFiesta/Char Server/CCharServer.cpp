@@ -247,8 +247,8 @@ PACKETHANDLER(pakCreateChar){
 	pakout.Add<byte>(0xf0); // ??
 	pakout.Add<dword>(0xff); // ??
 	pakout.Fill<byte>(0x00, 0x0C); // ??
-	pakout.Add<dword>(0x00); // Pos?
-	pakout.Add<dword>(0x00); // Pos?
+	pakout.Add<dword>(0x00); // PosX
+	pakout.Add<dword>(0x00); // PosY
 	pakout.Add<word>(0x00); // ??
 	pakout.Add<word>(0x00); // ??
 
