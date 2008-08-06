@@ -24,6 +24,11 @@ typedef char*					string;
 #define DELVEC( vector ) { for(dword vector_pos=0;vector_pos<vector.size();vector_pos++){ DEL( vector.at(vector_pos) ) } vector.clear(); }
 #define DELVECARR( vector ) { for(dword vector_pos=0;vector_pos<vector.size();vector_pos++){ DELARR( vector.at(vector_pos) ) } vector.clear(); }
 
+#define strtobyte( str ) byte(strtoul(str, NULL, 0))
+#define strtoword( str ) word(strtoul(str, NULL, 0))
+#define strtodword( str ) dword(strtoul(str, NULL, 0))
+#define strtofloat( str ) float(atof(str))
+
 //Global defines
 #ifndef TITAN_CLIENTS_PER_THREAD
 #	define TITAN_CLIENTS_PER_THREAD 1
@@ -236,6 +241,12 @@ struct CVector2D
 	}
 };
 #endif
+
+struct FixLenStr {
+	FixLenStr(char* str, dword len):_str(str),_len(len){}
+	char* _str;
+	int _len;
+};
 
 #include "TitanLog.h"
 #include "CTitanPacket.hpp"

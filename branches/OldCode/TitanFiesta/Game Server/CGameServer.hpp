@@ -20,7 +20,7 @@ public:
 	int id;
 	word charid;
 	int accesslevel;
-	int lastslot;
+	byte lastslot;
 	int loginid;
 	word clientid;
 private:

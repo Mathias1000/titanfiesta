@@ -242,11 +242,6 @@ CTitanClient* CTitanServer::CreateNewClient( )
 	return new CTitanClient( );
 }
 
-CTitanPacket* CTitanServer::CreateNewPacket( byte* nBuffer )
-{
-	return new CTitanPacket( nBuffer, true );
-}
-
 void CTitanServer::SendPacket( CTitanClient* thisclient, CTitanPacket* pak )
 {
 	EncryptPacket( thisclient, pak );

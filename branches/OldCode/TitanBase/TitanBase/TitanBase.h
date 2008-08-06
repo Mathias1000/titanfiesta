@@ -91,7 +91,6 @@ public:
 	void Wait();
 
 	virtual CTitanClient* CreateNewClient( );
-	virtual CTitanPacket* CreateNewPacket( byte* nBuffer );
 	virtual bool OnServerReady() = 0;
 	virtual void OnClientConnect( CTitanClient* baseclient ) = 0;
 	virtual void OnClientDisconnect( CTitanClient* baseclient ) = 0;

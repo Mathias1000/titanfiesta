@@ -2,40 +2,19 @@ class CTitanPacket
 {
 public:
 	CTitanPacket(dword command = 0){
-		//_Buffer = (byte*)malloc(DEFAULT_PACKET_SIZE);
 		_Size = PACKET_HEADER_SIZE;
 		_Command = command;
 		_CurPos = PACKET_HEADER_SIZE;
-		//_CurBufSize = DEFAULT_PACKET_SIZE;
-	}
-	CTitanPacket(byte* myBuffer,bool iAmHereToShowThatMyBufferIsAPointerNotAdWord){
-		//_Buffer = myBuffer;
-		_Size = PACKET_HEADER_SIZE;
-		_Command = 0;
-		_CurPos = PACKET_HEADER_SIZE;
 	}
 	~CTitanPacket(){
-		/*if(_Buffer != NULL){
-			free(_Buffer);
-			_Buffer = NULL;
-		}*/
 	}
 
 	template <typename T> void Fill( T val, dword count ){
-		for(dword i = 0; i < count; i++){
+		for(dword i = 0; i < count; i++)
 			Add<T>(val);
-		}
 	}
 
-	template <typename T> void Add( T val )
-	{
-		/*if((_Size + sizeof( T )) > _CurBufSize){
-			_CurBufSize += 0x100;
-			if((_Size + sizeof( T )) > _CurBufSize){
-				_CurBufSize = _Size + sizeof( T );
-			}
-			_Buffer = (byte*)realloc(_Buffer, _CurBufSize);
-		}*/
+	template <typename T> void Add( T val ){
 		*((T*)&_Buffer[_Size]) = val;
 		_Size += sizeof( T );
 	}
@@ -138,7 +117,7 @@ public:
 	}
 
 	template <typename T> CTitanPacket& operator<<(T val){
-		*((T*)&_Buffer[_Size]) = val;
+		*reinterpret_cast<T*>(_Buffer + _Size) = val;
 		_Size += sizeof( T );
 		return (*this);
 	}
@@ -149,12 +128,44 @@ public:
 		return (*this);
 	}
 
+	template <> CTitanPacket& operator<<(FixLenStr val){
+		int strleng = strlen(val._str);
+		if(strleng > val._len){
+			memcpy(_Buffer + _Size, val._str, val._len);
+			_Size += val._len;
+			return (*this);
+		}
+		memcpy(_Buffer + _Size, val._str, strleng);
+		_Size += strleng;
+		int extra = val._len - strleng;
+		if(extra > 0){
+			memset(_Buffer + _Size, 0, extra);
+			_Size += extra;
+		}
+		return (*this);
+	}
+
 	template <typename T> CTitanPacket& operator>>(T& val){
 		val = *reinterpret_cast<T*>(_Buffer + _CurPos);
 		_CurPos += sizeof( T );
 		return (*this);
 	}
 
+#ifdef TITAN_USING_ISC
+	template <> CTitanPacket& operator<<(CServerData* srv){
+		Add<byte>(srv->type);
+		Add<word>(srv->iscid);
+		Add<word>(srv->id);
+		Add<word>(srv->owner);
+		Add<word>(srv->status);
+		Add<string>(srv->name);
+		Add<string>(srv->ip);
+		Add<dword>(srv->port);
+		Add<qword>(srv->flags);
+		Add<dword>(srv->currentusers);
+		Add<dword>(srv->maxusers);
+	}
+#endif
 #ifdef TITAN_USING_CVECTOR2F
 	template <> CVector2F Read( )
 	{
@@ -259,17 +270,13 @@ public:
 		_CurPos = nPos;
 	}
 
-	/*void Buffer( byte* nBuffer ){
-		_Buffer = nBuffer;
-	}*/
 	byte* Buffer(){
 		return _Buffer;
 	}
 protected:
 	byte _Buffer[0x8000];
+
 	dword _Size;
 	dword _Command;
 	dword _CurPos;
-
-	//dword _CurBufSize;
 };
