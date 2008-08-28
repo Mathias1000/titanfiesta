@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SHN Editor", "SHN Editor\SH
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Server", "Game Server\Game Server.vcproj", "{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Fiesta Proxy V2", "Fiesta Proxy V2\Fiesta Proxy V2.vcproj", "{8ED2FA13-7027-4C96-A039-1D23C1A464C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -43,6 +45,10 @@ Global
 		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Debug|Win32.Build.0 = Debug|Win32
 		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Release|Win32.ActiveCfg = Release|Win32
 		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Release|Win32.Build.0 = Release|Win32
+		{8ED2FA13-7027-4C96-A039-1D23C1A464C4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8ED2FA13-7027-4C96-A039-1D23C1A464C4}.Debug|Win32.Build.0 = Debug|Win32
+		{8ED2FA13-7027-4C96-A039-1D23C1A464C4}.Release|Win32.ActiveCfg = Release|Win32
+		{8ED2FA13-7027-4C96-A039-1D23C1A464C4}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
