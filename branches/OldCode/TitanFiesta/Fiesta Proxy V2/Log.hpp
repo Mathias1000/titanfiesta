@@ -36,6 +36,12 @@ static void SetConsoleColor( dword textcolor, dword backcolor = 0 ){
 }
 
 static void LogPacket(CPacket* pak, char serv, char source){
+	//Outgoing filter
+	if(pak->command == 0x2019 || pak->command == 0x2012) return;
+
+	//Incoming filter
+	if(pak->command == 0x201a || pak->command == 0x2018 || pak->command == 0x1805) return;
+
 	boost::mutex::scoped_lock lConsole(mConsole);
 
 	SetConsoleColor(MSG_INFO);

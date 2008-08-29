@@ -21,6 +21,13 @@ public:
 	}
 	~CPacket(){}
 
+	void ResetPacket(word command){
+		size = 3;
+		pos = 3;
+		this->command = command;
+		SetBuffer();
+	}
+
 	void GetFromBuffer(){
 		if(buffer[0] != 0){
 			command = *reinterpret_cast<word*>(buffer + 1);

@@ -22,7 +22,7 @@ void ReceivedLoginClientPacket(CPacket* pak, CConnectClient* login);
 void ReceivedWorldClientPacket(CPacket* pak, CConnectClient* world);
 void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game);
 
-void HandleCommand(char* command, CConnectClient* game);
+void HandleCommand(CPacket* pak, char* command, CConnectClient* game);
 
 #include "CPacket.hpp"
 #include "Log.hpp"

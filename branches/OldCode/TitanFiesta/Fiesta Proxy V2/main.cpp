@@ -49,7 +49,7 @@ void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game){
 		case 0x2001:
 			if(pak->buffer[pak->pos + 1] == '&'){
 				pak->buffer[pak->size] = 0;
-				HandleCommand(reinterpret_cast<char*>(pak->buffer + pak->pos + 1), game);
+				HandleCommand(pak, reinterpret_cast<char*>(pak->buffer + pak->pos + 1), game);
 			}
 		break;
 	}
