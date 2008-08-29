@@ -10,8 +10,9 @@ void HandleCommand(char* command, CConnectClient* game){
 
 	if(_strcmpi(command, "&emote") == 0){
 		CPacket pakout(0x2020, outBuffer);
-		byte emote = strtoul(args, NULL, 0);
+		byte emote = strtoul(args, NULL, 0) & 0xFF;
 		pakout.Add<byte>(emote);
+		pakout.SetBuffer();
 		game->SendServerPacket(&pakout);
 	}
 }

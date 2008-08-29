@@ -135,11 +135,13 @@ ended:
 	}
 
 	void SendServerPacket(CPacket* pak){
+		LogPacket(pak, GetSrvName()[0], '>');
 		cliOutCrypt.CryptPacket(pak);
 		send(srvSocket, reinterpret_cast<char*>(pak->buffer), pak->size, 0);
 	}
 
 	void SendClientPacket(CPacket* pak){
+		LogPacket(pak, GetSrvName()[0], '<');
 		send(cliSocket, reinterpret_cast<char*>(pak->buffer), pak->size, 0);
 	}
 
@@ -167,7 +169,6 @@ protected:
 		}else if(srvType == 2){
 			ReceivedGameClientPacket(&pak, this);
 		}
-		LogPacket(&pak);
 		SendServerPacket(&pak);
 	}
 
@@ -185,7 +186,6 @@ protected:
 		}else if(srvType == 2){
 			ReceivedGameServerPacket(&pak, this);
 		}
-		LogPacket(&pak);
 		SendClientPacket(&pak);
 	}
 

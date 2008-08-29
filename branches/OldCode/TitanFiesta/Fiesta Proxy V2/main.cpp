@@ -56,15 +56,14 @@ void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game){
 }
 
 int main(int argc, char** argv){
-	char* email;
-	char* password;
 	if(argc < 3){
-		email = "james.benton2@hotmail.com";
-		password = "0589cc40d464f3fc1da74caddeaa1fb4";
-	}else{
-		email = argv[1];
-		password = argv[2];
+		Log(MSG_ERROR, "%s <email> <password>", argv[0]);
+		return 0;
 	}
+
+	char* email = argv[1];
+	char* password = argv[2];	
+
 	WORD sockVersion;
 	WSADATA wsaData;
 	sockVersion = MAKEWORD(1, 1);

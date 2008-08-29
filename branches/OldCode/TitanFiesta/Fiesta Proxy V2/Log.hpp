@@ -35,11 +35,11 @@ static void SetConsoleColor( dword textcolor, dword backcolor = 0 ){
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), textcolor + (backcolor << 4));
 }
 
-static void LogPacket(CPacket* pak){
+static void LogPacket(CPacket* pak, char serv, char source){
 	boost::mutex::scoped_lock lConsole(mConsole);
 
-	SetConsoleColor(MSG_DEBUG);
-	printf("[PAK %04x (%d)]: ", pak->command, pak->size);
+	SetConsoleColor(MSG_INFO);
+	printf("%c%c ", serv, source);
 
 	SetConsoleColor(CC_WHITE);
 	for(dword i = 0; i < pak->size; i++)
