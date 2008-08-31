@@ -3,6 +3,7 @@
 CListener listener;
 byte outBuffer[256];
 int curX, curY;
+bool isMoving;
 
 void ReceivedLoginServerPacket(CPacket* pak, CConnectClient* login){
 	switch(pak->command){
@@ -27,7 +28,7 @@ void ReceivedWorldServerPacket(CPacket* pak, CConnectClient* world){
 		break;
 	}
 }
-
+//Other Player Move! 16 1a 20 fa 31 88 33 00 00 56 2a 00 00 81 33 00 00 11 2a 00 00 95 00
 void ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
 	switch(pak->command){
 		case 0x1C0A:
@@ -43,7 +44,7 @@ void ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
 
 				float distance = sqrt((xDiff*xDiff) + (yDiff*yDiff));
 				Log(MSG_INFO, "Drop Distance: %4.2f", distance);
-				if(distance < 200.0f){
+				if(distance < 100.0f){
 					CPacket pakout(0x3009, outBuffer);
 					pakout.Add<word>(dropid);
 					pakout.SetBuffer();
@@ -51,6 +52,12 @@ void ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
 				}
 			}
 		break;
+		//case 0x2402:
+		//	OnFinishMine(pak, game);
+		//break;
+		//case 0x1C08:
+		//	OnMonsterSpawn(pak);
+		//break;
 		case 0x180A:
 			listener.SetGameIP(pak->Get<char*>(0x0D));
 			listener.SetGamePort(pak->Get<word>(0x1D));
@@ -75,10 +82,17 @@ void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game){
 				HandleCommand(pak, reinterpret_cast<char*>(pak->buffer + pak->pos + 1), game);
 			}
 		break;
+		case 0x2012:
+			isMoving = false;
+			curY = pak->Read<dword>();
+			curX = pak->Read<dword>();
+			OnStopMoving(game);
+		break;
 		case 0x2019:
 			pak->Read<qword>();
 			curY = pak->Read<dword>();
 			curX = pak->Read<dword>();
+			isMoving = true;
 		break;
 		
 		//2401 = attack word <client id>
@@ -109,7 +123,7 @@ int main(int argc, char** argv){
 	CFiestaLauncher launcher;
 	launcher.Launch(email, password);
 
-	if(!listener.Start("64.127.118.7", 9010)){
+	if(!listener.Start("207.211.84.14", 9010)){
 		Log(MSG_ERROR, "Listener.Start() returned false!");
 		return 0;
 	}

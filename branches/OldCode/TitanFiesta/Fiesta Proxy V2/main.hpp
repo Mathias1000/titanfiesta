@@ -13,6 +13,7 @@ typedef unsigned __int64 qword;
 
 class CConnectClient;
 class CPacket;
+struct PakMonster;
 
 void ReceivedLoginServerPacket(CPacket* pak, CConnectClient* login);
 void ReceivedWorldServerPacket(CPacket* pak, CConnectClient* world);
@@ -24,7 +25,17 @@ void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game);
 
 void HandleCommand(CPacket* pak, char* command, CConnectClient* game);
 
+void OnMonsterSpawn(CPacket* pak);
+void OnStopMoving(CConnectClient* game);
+void OnFinishMine(CPacket* pak, CConnectClient* game);
+void StartMineClosest(CConnectClient* game);
+
 extern byte outBuffer[256];
+extern bool isMoving;
+extern int curX;
+extern int curY;
+extern bool mineBot;
+extern PakMonster* targetOre;
 
 #include "CPacket.hpp"
 #include "Log.hpp"

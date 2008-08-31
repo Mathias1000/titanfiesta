@@ -16,6 +16,13 @@ void HandleCommand(CPacket* pak, char* command, CConnectClient* game){
 		pak->ResetPacket(0x181A);
 		pak->Add<byte>(mapid);
 		pak->SetBuffer();
+	}else if(_strcmpi(command, "&mine") == 0){
+		if(_strcmpi(args, "on") == 0){
+			StartMineClosest(game);
+		}else{
+			mineBot = false;
+			targetOre = NULL;
+		}
 	}
 }
 
@@ -27,4 +34,8 @@ To Burning Hill from Sand Hill
 To Sand Hill from Burning Hill
 04 0a 20 98 08 //Get Teleport
 03 02 3c 00//Yes
+
+To Echo Cave
+04 0a 20 86 08
 */
+

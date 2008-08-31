@@ -42,6 +42,8 @@ static void LogPacket(CPacket* pak, char serv, char source){
 	//Incoming filter
 	if(pak->command == 0x201a || pak->command == 0x2018 || pak->command == 0x1805) return;
 
+	if(pak->command == 0x0826 || pak->command == 0x0827) return;//XTRAP Ping
+
 	boost::mutex::scoped_lock lConsole(mConsole);
 
 	SetConsoleColor(MSG_INFO);
