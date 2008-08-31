@@ -24,6 +24,8 @@ void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game);
 
 void HandleCommand(CPacket* pak, char* command, CConnectClient* game);
 
+extern byte outBuffer[256];
+
 #include "CPacket.hpp"
 #include "Log.hpp"
 #include "CFiestaCrypt.hpp"
