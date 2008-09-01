@@ -4,6 +4,7 @@ CListener listener;
 byte outBuffer[256];
 int curX, curY;
 bool isMoving;
+int myClientId;
 
 void ReceivedLoginServerPacket(CPacket* pak, CConnectClient* login){
 	switch(pak->command){
@@ -31,6 +32,9 @@ void ReceivedWorldServerPacket(CPacket* pak, CConnectClient* world){
 //Other Player Move! 16 1a 20 fa 31 88 33 00 00 56 2a 00 00 81 33 00 00 11 2a 00 00 95 00
 void ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
 	switch(pak->command){
+		case 0x1802:
+			myClientId = pak->Read<word>();
+		break;
 		case 0x1C0A:
 			{
 				word dropid = pak->Read<word>();
@@ -38,6 +42,9 @@ void ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
 
 				int dropY = pak->Read<dword>();
 				int dropX = pak->Read<dword>();
+
+				word fromWho = pak->Read<word>();
+				if(fromWho == myClientId) return;
 
 				float xDiff = float(curX - dropX);
 				float yDiff = float(curY - dropY);

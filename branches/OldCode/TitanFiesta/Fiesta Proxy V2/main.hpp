@@ -36,6 +36,7 @@ extern int curX;
 extern int curY;
 extern bool mineBot;
 extern PakMonster* targetOre;
+extern int myClientId;
 
 #include "CPacket.hpp"
 #include "Log.hpp"
