@@ -53,10 +53,10 @@ void ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
 			}
 		break;
 		//case 0x2402:
-		//	OnFinishMine(pak, game);
+		//mining sux 	OnFinishMine(pak, game);
 		//break;
 		//case 0x1C08:
-		//	OnMonsterSpawn(pak);
+		//mining sux 	OnMonsterSpawn(pak);
 		//break;
 		case 0x180A:
 			listener.SetGameIP(pak->Get<char*>(0x0D));
@@ -86,7 +86,7 @@ void ReceivedGameClientPacket(CPacket* pak, CConnectClient* game){
 			isMoving = false;
 			curY = pak->Read<dword>();
 			curX = pak->Read<dword>();
-			OnStopMoving(game);
+			//mining sux OnStopMoving(game);
 		break;
 		case 0x2019:
 			pak->Read<qword>();
