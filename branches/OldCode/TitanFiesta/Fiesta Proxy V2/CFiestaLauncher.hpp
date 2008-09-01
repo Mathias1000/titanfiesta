@@ -71,7 +71,7 @@ public:
 		STARTUPINFO si = { sizeof(si) };
 		PROCESS_INFORMATION pi;
 		char commandLine[256];
-		sprintf_s(commandLine, 256, "Fiesta.exe -t %s -i 127.0.0.1 -u http://store.outspark.com/game/fiesta", token);
+		sprintf_s(commandLine, 256, "Fiesta.bin -t %s -i 127.0.0.1 -u http://store.outspark.com/game/fiesta", token);
 		CreateProcessA(0, commandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	}
 private:
