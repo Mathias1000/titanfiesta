@@ -179,6 +179,10 @@
 				RelativePath=".\main.cpp"
 				>
 			</File>
+			<Filter
+				Name="Common"
+				>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -196,6 +200,14 @@
 			<Filter
 				Name="Common"
 				>
+				<File
+					RelativePath="..\Common\Common.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Common\md5.hpp"
+					>
+				</File>
 				<File
 					RelativePath="..\Common\XorTable.h"
 					>

@@ -16,7 +16,7 @@ public:
 	char* password;
 	int id;
 	int accesslevel;
-	int loginid;
+	byte loginid[0x40];
 private:
 };
 
@@ -80,6 +80,7 @@ public:
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 
 	PACKETHANDLER(pakTokenLogin);
+	PACKETHANDLER(pakUserLogin);
 	PACKETHANDLER(pakJoinServer);
 	PACKETHANDLER(pakPing);
 

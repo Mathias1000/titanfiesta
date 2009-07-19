@@ -201,6 +201,10 @@
 				Name="Common"
 				>
 				<File
+					RelativePath="..\Common\Common.h"
+					>
+				</File>
+				<File
 					RelativePath="..\Common\Common.hpp"
 					>
 				</File>

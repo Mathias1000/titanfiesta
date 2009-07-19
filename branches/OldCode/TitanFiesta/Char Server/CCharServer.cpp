@@ -259,34 +259,26 @@ PACKETHANDLER(pakCreateChar){
 }
 
 PACKETHANDLER(pakUserLogin){
-	char username[0x13];
-	username[0x12] = 0;
-	memcpy(username, pak->Buffer() + 3, 0x12);
+	memset(thisclient->username, 0, 0x13);
+	memcpy(thisclient->loginid, pak->Data() + 0x12, 0x40);
 
-	thisclient->username = db->MakeSQLSafe(username);
-	thisclient->loginid = pak->Get<word>(0x12);
-	if(_strcmpi(thisclient->username, username)){
-		 Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->username, username);
-		 return false;
-	}
+	char* buf = db->EncodeBinary(thisclient->loginid, 0x40);
+	Log(MSG_DEBUG, "Unique Id: %s", buf);
 
-	Log(MSG_DEBUG, "Username: %s, Unique Id: %d", thisclient->username, thisclient->loginid);
-
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`loginid`,`accesslevel` FROM `users` WHERE `username`='%s'", thisclient->username);
+	MYSQL_RES* result = db->DoSQL("SELECT `id`,`username`,`accesslevel` FROM `users` WHERE `loginid`='%s'", buf);
 	if(!result || mysql_num_rows(result) != 1){
 		 Log(MSG_DEBUG, "SELECT returned bollocks");
+		delete[] buf;
 		 goto authFail;
 	}
+	delete[] buf;
 	
 	MYSQL_ROW row = mysql_fetch_row(result);
-	if(atoi(row[1]) != thisclient->loginid){
-		 Log(MSG_DEBUG, "Incorrect loginid");
-		 thisclient->id = -1;
-		 goto authFail;
-	}
 
 	thisclient->id = atoi(row[0]);
-	thisclient->accesslevel = atoi(row[1]);
+	memcpy(thisclient->username, row[1], strlen(row[1]));
+	thisclient->accesslevel = atoi(row[2]);
+	printf("User %s with ID %d al %d has logged in\n", thisclient->username, thisclient->id, thisclient->accesslevel);
 
 	if(thisclient->accesslevel < 1){
 		 Log(MSG_DEBUG, "thisclient->accesslevel < 1");
@@ -360,11 +352,11 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 	
 	MYSQL_ROW row;
 	CPacket pakout(0xC14);
-	pakout.Add<word>(thisclient->loginid); // Unique ID
+	pakout.Add<word>(*(word*)thisclient->loginid); // Unique ID
 	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
 	while (row = mysql_fetch_row(result)) {
-		 pakout.Add<word>(atoi(row[0])); // Character ID
-		 pakout.Add<word>(0x000f); // Name length (Always 16?)
+		pakout.Add<dword>(atoi(row[0])); // Character ID
+		//pakout.Add<word>(0x000f); // Name length (Always 16?)
 		 pakout.AddFixLenStr(row[1], 0x10); // Name
 		 pakout.Add<word>(atoi(row[2])); // Level
 		 pakout.Add<byte>(atoi(row[3])); // Char slot
@@ -380,7 +372,7 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 		 pakout.Add<word>(0xFFFF); //Shield [Not Shown]
 		 pakout.Add<word>(0xFFFF); //Leg Armour
 		 pakout.Add<word>(0xFFFF); //Boot Armour
-		 pakout.Fill<byte>(0xFF, 0x1C);
+		pakout.Fill<byte>(0xFF, 0x1E);
 		 pakout.Add<word>(0x0); // 0x0060 on my main char
 		 pakout.Add<byte>(0xf0);
 		 pakout.Add<dword>(0xffffffff);

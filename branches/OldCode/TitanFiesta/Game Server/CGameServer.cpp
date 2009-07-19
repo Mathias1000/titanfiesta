@@ -260,6 +260,9 @@ PACKETHANDLER(pakChat){
 			}
 		}else if(_strcmpi(command, "ask") == 0){
 			CPacket pakout(0x3c01);
+			if (SERVERTYPE == EURSERVER)
+				pakout.AddFixLenStr("Who would you like to have sex with?", 0x41);
+			else
 			pakout.AddFixLenStr("Who would you like to have sex with?", 0x40);
 			pakout << byte(0x03);//Answer Count
 
@@ -387,6 +390,14 @@ PACKETHANDLER(pakChat){
 			}
 
 			char* itemName = itemInfo->GetStringId(strtoul(itemId, NULL, 0), 2);
+			if (itemName == NULL) {
+				CPacket pakout(0x2002);
+				pakout << thisclient->clientid;
+				pakout << byte(strlen("Item Not Found"));
+				pakout << ':';
+				pakout << "Item Not Found";
+				SendPacket(thisclient, &pakout);
+			}
 			CPacket pakout(0x2002);
 			pakout << thisclient->clientid;
 			pakout << byte(strlen(itemName));
@@ -425,10 +436,10 @@ const static byte packet1802[236] = {
 PACKETHANDLER(pakUserLogin){
 	char charname[0x13];
 	charname[0x12] = 0;
-	memcpy(charname, pak->Buffer() + 5, 0x12);
+	memcpy(charname, pak->Data() + 2, 0x12);
 
 	thisclient->charname = db->MakeSQLSafe(charname);
-	thisclient->loginid = pak->Get<word>(0x03, 0);
+	thisclient->loginid = pak->Get<word>(0);
 	thisclient->clientid = 0x3713;//so its 13 37 in packet logs ;)
 	if(_strcmpi(thisclient->charname, charname)){
 		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->charname, charname);
@@ -444,10 +455,16 @@ PACKETHANDLER(pakUserLogin){
 	}
 	
 	MYSQL_ROW row = mysql_fetch_row(result);
-	if(atoi(row[2]) != thisclient->loginid){
+
+	{	// Check loginid
+		byte buf[0x40];
+		db->DecodeBinary(row[2], buf);
+		word loginid = *(word*)(buf);
+		if(loginid != thisclient->loginid){
 		Log(MSG_DEBUG, "Incorrect loginid");
 		thisclient->id = -1;
 		goto authFail;
+		}
 	}
 
 	thisclient->id = atoi(row[0]);

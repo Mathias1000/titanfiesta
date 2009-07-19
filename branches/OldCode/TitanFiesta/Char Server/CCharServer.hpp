@@ -4,16 +4,16 @@
 class CCharClient : public CTitanClient
 {	
 public:
-	CCharClient( ):username(NULL),id(-1),loginid(-1),accesslevel(-1){ }
+	CCharClient( ):id(-1),accesslevel(-1){ }
 	~CCharClient( ){
 		if(username != NULL)
 			free(username);
 	}
 
 	dword xorTableLoc;
-	char* username;
+	char username[0x13];
 	int id;
-	int loginid;
+	byte loginid[0x40];
 	int accesslevel;
 private:
 };

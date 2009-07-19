@@ -19,6 +19,7 @@
 
 #include "..\..\TitanBase\TitanBase\TitanGlobals.h"
 #include "..\Common\XorTable.h"
+#include "..\Common\Common.h"
 
 class CPacket : public CTitanPacket
 {
