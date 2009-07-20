@@ -314,6 +314,7 @@ void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 		case TITAN_ISC_SETISCID:
 		{
 			ServerData.iscid = pak->Read<word>();
+			Log(MSG_DEBUG, "Set ISCID to %d", ServerData.iscid);
 		}
 		break;
 		case TITAN_ISC_REMOVE:
@@ -322,7 +323,12 @@ void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 			rwmServerList.acquireWriteLock( );
 			for(std::vector<CServerData*>::iterator itvdata = ServerList.begin(); itvdata != ServerList.end(); itvdata++) {
 				CServerData* dat = ((CServerData*)*itvdata); 
-				if(dat->iscid == iscid){ ServerList.erase(itvdata); delete dat; break; }
+				if(dat->iscid == iscid){ 
+					Log(MSG_INFO, "Server %s with ISC ID %d has disconnected", dat->name, dat->iscid);
+					ServerList.erase(itvdata); 
+					delete dat; 
+					break; 
+				}
 			}
 			rwmServerList.releaseWriteLock( );
 		}

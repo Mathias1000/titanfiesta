@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="Login Server"
-	ProjectGUID="{EC4E1AA5-4357-4EE2-B475-E0A7F6BE258C}"
-	RootNamespace="LoginServer"
+	Name="TitanISC"
+	ProjectGUID="{86DABEBC-FFDF-4571-A89E-5B75642BC7A2}"
+	RootNamespace="TitanISC"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -45,7 +45,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="4"
@@ -172,7 +172,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\CLoginServer.cpp"
+				RelativePath=".\CTitanISC.cpp"
 				>
 			</File>
 			<File
@@ -186,7 +186,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\CLoginServer.hpp"
+				RelativePath=".\CTitanISC.hpp"
 				>
 			</File>
 			<File
@@ -196,18 +196,6 @@
 			<Filter
 				Name="Common"
 				>
-				<File
-					RelativePath="..\Common\Common.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Common\md5.hpp"
-					>
-				</File>
-				<File
-					RelativePath="..\Common\XorTable.h"
-					>
-				</File>
 				<Filter
 					Name="TitanBase"
 					>
@@ -244,7 +232,7 @@
 						>
 					</File>
 					<File
-						RelativePath="..\..\TitanBase\TitanBase\CTitanPacket.hpp"
+						RelativePath="..\..\TitanBase\TitanBase\ctitanpacket.hpp"
 						>
 					</File>
 					<File
