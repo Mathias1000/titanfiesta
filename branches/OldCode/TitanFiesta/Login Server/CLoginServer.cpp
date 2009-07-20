@@ -111,7 +111,7 @@ PACKETHANDLER(pakJoinServer){
 	pakout.Add<byte>(srv->status); // Server Status
 	pakout.AddFixLenStr(srv->ip, 0x10); // IP
 	pakout.Add<word>(srv->port); // Port
-	pakout.AddFixLenStr((char*)thisclient->loginid, 0x40);//Special Login ID
+	pakout.AddBytes(thisclient->loginid, 0x40);//Special Login ID
 	SendPacket(thisclient, &pakout);
 	return true;
 }
