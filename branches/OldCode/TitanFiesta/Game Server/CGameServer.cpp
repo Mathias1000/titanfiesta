@@ -60,7 +60,10 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
                 Log(MSG_DEBUG, "0x2017 Walk Packet -> nY: %d nX: %d cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
             break;
 			case 0x2019:
-				Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
+				PACKETRECV(pakMove);
+			break;
+			case 0x201e:
+				PACKETRECV(pakShout);
 			break;
 			case 0x2020:
 				PACKETRECV(pakBasicAction);
@@ -157,6 +160,27 @@ PACKETHANDLER(pakRest){
 	CPacket pakout(0x2028);
 	pakout << word(0x0a81);
 	SendPacket(thisclient, &pakout);
+	return true;
+}
+
+PACKETHANDLER(pakMove) {
+	thisclient->newY = pak->Read<dword>();
+	thisclient->newX = pak->Read<dword>();
+	thisclient->curY = pak->Read<dword>();
+	thisclient->curX = pak->Read<dword>();
+	Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", thisclient->newY, thisclient->newX, thisclient->curY, thisclient->curX);
+
+	CPacket pakout(0x201a);
+		pakout.Add<word>(thisclient->clientid);
+		pakout.Add<dword>(thisclient->newY);
+		pakout.Add<dword>(thisclient->newX);
+		pakout.Add<dword>(thisclient->curY);
+		pakout.Add<dword>(thisclient->curX);
+		pakout.Add<word>(0x68); // Speed?
+
+	for (dword i = 0; i < ClientList.size(); i++)
+		SendPacket((CGameClient*)ClientList.at(i), &pakout);
+
 	return true;
 }
 
@@ -433,10 +457,32 @@ PACKETHANDLER(pakChat){
 	}else{
 		//leet test kekeke
 		CPacket pakout(0x2002);
-		pakout << thisclient->clientid;
-		pakout << chatLen << ':' << (char*)(pak->Buffer() + pak->Pos());
-		SendPacket(thisclient, &pakout);
+		pakout.Add<word>(thisclient->clientid);
+		pakout.Add<byte>(chatLen);
+		pakout.Add<byte>(0x01); // Unknown?
+		pakout.AddBytes(pak->Buffer() + pak->Pos(), chatLen);
+		for (std::vector<CTitanClient*>::iterator i = ClientList.begin(); i != ClientList.end(); i++) {
+			CGameClient* c = (CGameClient*)*i;
+			if (c == thisclient) pakout.Set<byte>(0x1A, 3);
+			else pakout.Set<byte>(0xFE, 3);
+			SendPacket((CGameClient*)*i, &pakout);
+		}
 	}
+	return true;
+	}
+
+PACKETHANDLER(pakShout) {
+	byte length = pak->Read<byte>();
+	byte* message = pak->ReadBytes(length, true);
+	Log(MSG_DEBUG, "Shout: %s", message);
+	CPacket pakout(0x201f);
+	pakout.AddFixLenStr(thisclient->charname, 0x10);
+	pakout.Add<byte>(0x00);
+	pakout.Add<byte>(length);
+	pakout.AddBytes(message, length);
+	for (std::vector<CTitanClient*>::iterator i = ClientList.begin(); i != ClientList.end(); i++)
+		SendPacket((CGameClient*)*i, &pakout);
+	delete[] message;
 	return true;
 }
 
@@ -475,7 +521,6 @@ PACKETHANDLER(pakUserLogin){
 
 	thisclient->charname = db->MakeSQLSafe(charname);
 	thisclient->loginid = pak->Get<word>(0);
-	thisclient->clientid = 0x3713;//so its 13 37 in packet logs ;)
 	if(_strcmpi(thisclient->charname, charname)){
 		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->charname, charname);
 		return false;
@@ -507,6 +552,10 @@ PACKETHANDLER(pakUserLogin){
 	thisclient->accesslevel = atoi(row[3]);
 	thisclient->lastslot = atoi(row[4]);
 	thisclient->charid = atoi(row[5]);
+	thisclient->clientid = thisclient->charid; // FIXME: Find a better way to do this.
+
+	thisclient->curX = thisclient->newX = 3257;
+	thisclient->curY = thisclient->newY = 9502;
 
 	if(thisclient->accesslevel < 1){
 		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
@@ -530,8 +579,8 @@ PACKETHANDLER(pakUserLogin){
 			pakout << dword(0x0000); // Fame
 			pakout << qword(0x1d1a); // Money
 			pakout.AddFixLenStr(row[9], 0x0C); // Cur map
-			pakout << dword(0x251e); // Pos X 9502
-			pakout << dword(0x0cb9); // Pos Y 3257
+			pakout << dword(thisclient->curY); // X
+			pakout << dword(thisclient->curX); // Y
 			pakout << byte(0x5a); // Starting Rotation
 			pakout << byte(0x01); // STR+
 			pakout << byte(0x02); // END+
@@ -693,6 +742,50 @@ PACKETHANDLER(pakUserLogin){
 			pakout << word(thisclient->clientid);
 			pakout.AddBytes((byte*)packet1802, 236);
 		SendPacket(thisclient, &pakout);
+	}
+	{
+		CPacket pakident(0x1c06);
+			pakident.Add<word>(thisclient->clientid);
+			pakident.AddFixLenStr(thisclient->charname, 0x10);
+			pakident.Add<dword>(thisclient->curY);
+			pakident.Add<dword>(thisclient->curX);
+			pakident.Add<byte>(0);
+			pakident.Add<byte>(0x01);
+			pakident.Add<byte>(0x09);
+			pakident.Add<byte>(0xa5);
+			pakident.Add<byte>(0x05);
+			pakident.Add<byte>(0x16);
+			pakident.Add<byte>(0x04);
+			pakident.Fill<byte>(0xff, 0x28);
+			pakident.Add<dword>(0x00);
+			pakident.Add<word>(0xffff);
+			pakident.Add<byte>(0xff);
+			pakident.Fill<byte>(0x00, 0x34);
+
+		// Send all users
+		for (dword i = 0; i < ClientList.size(); i++) {
+			CGameClient* c = (CGameClient*)ClientList.at(i);
+			CPacket pakout(0x1c06);
+			pakout.Add<word>(c->clientid);
+			pakout.AddFixLenStr(c->charname, 0x10);
+			pakout.Add<dword>(c->curY);
+			pakout.Add<dword>(c->curX);
+			pakout.Add<byte>(0);
+			pakout.Add<byte>(0x01);
+			pakout.Add<byte>(0x09);
+			pakout.Add<byte>(0xa5);
+			pakout.Add<byte>(0x05);
+			pakout.Add<byte>(0x16);
+			pakout.Add<byte>(0x04);
+			pakout.Fill<byte>(0xff, 0x28);
+			pakout.Add<dword>(0x00);
+			pakout.Add<word>(0xffff);
+			pakout.Add<byte>(0xff);
+			pakout.Fill<byte>(0x00, 0x34);
+
+			SendPacket(thisclient, &pakout); // Send client to thisclient
+			SendPacket(c, &pakident); // Send thisclient to client
+		}
 	}
 
 	db->QFree(result);

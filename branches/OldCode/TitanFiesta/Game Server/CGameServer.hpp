@@ -23,6 +23,11 @@ public:
 	byte lastslot;
 	int loginid;
 	word clientid;
+
+	dword newX;
+	dword newY;
+	dword curX;
+	dword curY;
 private:
 };
 
@@ -88,7 +93,9 @@ public:
 
 	PACKETHANDLER(pakUserLogin);
 	PACKETHANDLER(pakChat);
+	PACKETHANDLER(pakShout);
 	PACKETHANDLER(pakRest);
+	PACKETHANDLER(pakMove);
 	PACKETHANDLER(pakEndRest);
 	PACKETHANDLER(pakSetTitle);
 	PACKETHANDLER(pakBasicAction);
