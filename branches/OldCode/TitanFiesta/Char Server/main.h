@@ -6,6 +6,7 @@
 
 //Optional Extra Includes
 #define TITAN_USING_ISC
+//#define TITAN_USING_CONSOLE_COMMANDS
 #define TITAN_USING_INIREAD
 #define TITAN_USING_MYSQL
 

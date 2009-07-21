@@ -91,6 +91,7 @@ public:
 	PACKETHANDLER(pakRest);
 	PACKETHANDLER(pakEndRest);
 	PACKETHANDLER(pakSetTitle);
+	PACKETHANDLER(pakBasicAction);
 
 private:
 	CServerData ServerData;

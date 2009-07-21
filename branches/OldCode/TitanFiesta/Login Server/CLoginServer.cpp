@@ -119,7 +119,7 @@ PACKETHANDLER(pakJoinServer){
 // USA Client Login
 PACKETHANDLER(pakTokenLogin){
 	if (SERVERTYPE != USASERVER) {
-		Log(MSG_DEBUG, "Europe client tried connecting");
+		Log(MSG_DEBUG, "USA client tried connecting");
 		return false;
 	}
 
@@ -204,7 +204,7 @@ authFail:
 // Europe Client Login
 PACKETHANDLER(pakUserLogin){
 	if (SERVERTYPE != EURSERVER) {
-		Log(MSG_DEBUG, "USA client tried connecting");
+		Log(MSG_DEBUG, "Europe client tried connecting");
 		return false;
 	}
 

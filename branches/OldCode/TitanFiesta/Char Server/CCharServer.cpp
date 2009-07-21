@@ -33,6 +33,10 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 	Log(MSG_INFO,"Received packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
 
 	switch(pak->Command()){
+		case 0x200c:
+			if (thisclient->id != -1)
+				PACKETRECV(pakWhisper);
+		break;
 		 case 0x7002:
 			  if(thisclient->id != -1)
 				   PACKETRECV(pak7002);
@@ -145,10 +149,47 @@ PACKETHANDLER(pak7c06) {
 	return true;
 }
 
+PACKETHANDLER(pakWhisper) {
+	char* target = (char*)pak->ReadBytes(0x10);
+	byte len = pak->Read<byte>();
+	char* message = (char*)pak->ReadBytes(len, true);
+	CCharClient* targetclient = GetClientByCharname(target);
+	delete[] target;
+
+	if (targetclient == NULL) {
+		delete[] message;
+		Log(MSG_DEBUG, "Invalid whisper target");
+		return false;
+	}
+	pak->Set<word>(0x200f, 1, 0);
+	SendPacket(thisclient, pak);
+
+	CPacket pakout(0x200d);
+		pakout.AddFixLenStr(thisclient->charname, 0x10);
+		pakout.Add<byte>(0x00); // Purple
+		pakout.Add<byte>(len);
+		pakout.AddBytes((byte*)message, len);
+	SendPacket(targetclient, &pakout);
+	delete[] message;
+	return true;
+}
+
 PACKETHANDLER(pakSelectChar){
 	byte slot = pak->Get<byte>(0x03, 0);
 
 	db->ExecSQL("UPDATE `users` SET `lastslot`=%d WHERE username='%s'", slot, thisclient->username);
+
+	MYSQL_RES* result = db->DoSQL("SELECT `charname` FROM `characters` WHERE `owner`='%s' AND `slot`=%d", thisclient->username, slot);
+	if(!result){
+		Log(MSG_DEBUG, "SELECT returned bollocks");
+		return false;
+	}
+	MYSQL_ROW row = mysql_fetch_row(result);
+	strncpy_s(thisclient->charname, 0x10, row[0], 0x10);
+	thisclient->charname[0x10] = '\0'; // Null terminate, just incase.
+	thisclient->lastslot = slot;
+	Log(MSG_DEBUG, "User selected character %s", row[0]);
+	db->QFree(result);
 
 	if(ServerList.size() == 0){
 		Log(MSG_ERROR, "No Game Server found");
@@ -384,4 +425,20 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 	}
 	db->QFree(result);
 	SendPacket(thisclient, &pakout);
+}
+
+#ifdef TITAN_USING_CONSOLE_COMMANDS
+void CCharServer::ProcessCommand( string command ) {
+	printf("Command: %s\n", command);
+}
+#endif
+
+CCharClient* CCharServer::GetClientByCharname(string charname) {
+	for (std::vector<CTitanClient*>::iterator i = ClientList.begin(); i != ClientList.end(); i++) {
+		CCharClient* c = (CCharClient*)*i;
+		if (c->lastslot == -1) continue;
+		if (strncmp(c->charname, charname, 0x10)) continue;
+		return c;
+	}
+	return NULL;
 }

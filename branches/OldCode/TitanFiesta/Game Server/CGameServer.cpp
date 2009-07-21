@@ -56,11 +56,14 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			case 0x2012:
 				Log(MSG_DEBUG, "0x2012 Stop Moving -> cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>());
 			break;
+            case 0x2017:
+                Log(MSG_DEBUG, "0x2017 Walk Packet -> nY: %d nX: %d cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
+            break;
 			case 0x2019:
 				Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
 			break;
 			case 0x2020:
-				Log(MSG_DEBUG, "0x2020 Do Emote -> id: %d", pak->Read<byte>());
+				PACKETRECV(pakBasicAction);
 			break;
 			case 0x2024:
 				Log(MSG_DEBUG, "0x2024 Jump!");
@@ -70,6 +73,14 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			break;
 			case 0x202A:
 				PACKETRECV(pakEndRest);
+			break;
+			case 0x3020: // Request Premium Items
+			{
+				Log(MSG_DEBUG, "Player requested premium item tab %d", pak->Read<word>());
+				CPacket pakout(0x3021);
+				pakout.AddFile("3021.pak");
+				SendPacket(thisclient, &pakout);
+			}
 			break;
 			case 0x3c02:
 			{
@@ -404,6 +415,20 @@ PACKETHANDLER(pakChat){
 			pakout << ':';
 			pakout << itemName;
 			SendPacket(thisclient, &pakout);
+		} else if (_strcmpi(command, "sendpak") == 0) {
+			char* pakfile = strtok_s(NULL, " ", &context);
+			if (pakfile == NULL) {
+				Log(MSG_DEBUG, "Not enough params for &sendpak <pakfile>");
+				return true;
+			}
+			CPacket pakout;
+			pakout.Pos(1);pakout.Size(1);
+			if (!pakout.AddFile(pakfile)) {
+				Log(MSG_DEBUG, "Error opening input file %s", pakfile);
+				return true;
+			}
+			pakout.Command((word)pakout.Buffer()[1]);
+			SendPacket(thisclient, &pakout);
 		}
 	}else{
 		//leet test kekeke
@@ -432,6 +457,16 @@ const static byte packet1802[236] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1e, 0x25, 0x00, 0x00, 0xb9, 0x0c, 0x00, 0x00 
 };
+
+PACKETHANDLER(pakBasicAction) {
+	byte actionid = pak->Read<byte>();
+	Log(MSG_DEBUG, "0x2020 Do Emote -> id: %d", actionid);
+	CPacket pakout(0x2021);
+	pakout.Add<word>(thisclient->clientid);
+	pakout.Add<byte>(actionid);
+	SendPacket(thisclient, &pakout);
+	return true;
+}
 
 PACKETHANDLER(pakUserLogin){
 	char charname[0x13];
@@ -569,8 +604,41 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Inventory
 		CPacket pakout(0x1047);
-			pakout << byte(0x00); // Count
+			pakout << byte(0x02); // Count
 			pakout << byte(0x09); // Type
+
+		{
+			f_date exp;
+			exp.year = 10; exp.month = 4; exp.day = 17; exp.hour = 13; exp.minute = 37;
+			pakout.Add<byte>(0x0c); // Size
+			pakout.Add<byte>(0x00); // Slot
+			pakout.Add<byte>(0x24); // State?
+			pakout.Add<word>(0x8955); // ItemID
+			pakout.Add<f_date>(exp); // Expire Date
+			pakout.Add<byte>(0x00); // Unk
+			pakout.Add<byte>(0x00); // Unk
+			pakout.Add<byte>(0x00); // Unk
+			pakout.Add<byte>(0x01); // Unk
+		}
+		{
+			pakout.Add<byte>(0x31); // Size
+			pakout.Add<byte>(0x01); // Slot
+			pakout.Add<byte>(0x24); // State?
+			pakout.Add<word>(0x2CFF); // ItemID
+			pakout.Add<byte>(6); // Refine
+			pakout.Add<word>(0x00); // Unknown
+			pakout.Add<word>(0xFFFF); // Title1
+			pakout.Add<dword>(0x00); // Unknown1
+			pakout.Add<word>(0xFFFF); // Title2
+			pakout.Add<dword>(0x00); // Unknown2
+			pakout.Add<word>(0xFFFF); // Title3
+			pakout.Add<dword>(0x00); // Unknown3
+			pakout.Add<word>(0xFFFF); // Title4
+			pakout.Add<dword>(0x00); // Unknown4
+			pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
+			pakout.Add<byte>(0x00); // Unknown
+			pakout.Add<byte>(0x01); // Unknown
+		}
 		SendPacket(thisclient, &pakout);
 	}
 
@@ -585,15 +653,15 @@ PACKETHANDLER(pakUserLogin){
 		CPacket pakout(0x1047);
 			pakout << byte(0x01); // Count
 			pakout << byte(0x0C); // Type
-			pakout << byte(0x08); // Unk
-			pakout << byte(0x00); // Unk
-			pakout << byte(0xC0); // Unk
 			{ // For Count
+				pakout << byte(0x08); // Data Length
+				pakout << byte(0x00); // Slot
+				pakout << byte(0xC0); // State?
 				pakout << word(31170); // ItemID [Liberty House]
-				pakout << byte(0xFF); // Quantity
-				pakout << byte(0xEC); // Unk
-				pakout << byte(0xBB); // Slot
-				pakout << byte(0x76); // Sep
+				pakout << byte(0x01); // ?
+				pakout << byte(0x02); // ?
+				pakout << byte(0x03); // ?
+				pakout << byte(0x04); // ?
 			}
 		SendPacket(thisclient, &pakout);
 	}

@@ -4,7 +4,7 @@
 class CCharClient : public CTitanClient
 {	
 public:
-	CCharClient( ):id(-1),accesslevel(-1){ }
+	CCharClient( ):id(-1),accesslevel(-1),lastslot(-1){ }
 	~CCharClient( ){
 		if(username != NULL)
 			free(username);
@@ -12,7 +12,9 @@ public:
 
 	dword xorTableLoc;
 	char username[0x13];
+	char charname[0x11];
 	int id;
+	int lastslot;
 	byte loginid[0x40];
 	int accesslevel;
 private:
@@ -77,10 +79,12 @@ public:
 
 	void ReceivedISCPacket( CISCPacket* pak );
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
+	void ProcessCommand( string command );
 	PACKETHANDLER(pakUserLogin);
 	PACKETHANDLER(pakCreateChar);
 	PACKETHANDLER(pakDeleteChar);
 	PACKETHANDLER(pakSelectChar);
+	PACKETHANDLER(pakWhisper);
 	PACKETHANDLER(pak7002);
 	PACKETHANDLER(pak7004);
 	PACKETHANDLER(pak700c);
@@ -89,6 +93,7 @@ public:
 	PACKETHANDLER(pak7c06);
 
 	void SendCharList(CCharClient* thisclient);
+	CCharClient* GetClientByCharname(string charname);
 
 	CServerData* GetServerByID(dword id){		
 		CServerData* retServ = NULL;
