@@ -95,9 +95,9 @@ private:
     boost::mutex m_mutex;
 
     dword m_readers;
-    boost::condition m_noReaders;
+    boost::condition_variable m_noReaders;
 
     dword m_pendingWriters;
     bool m_currentWriter;
-    boost::condition m_writerFinished;
+    boost::condition_variable m_writerFinished;
 };

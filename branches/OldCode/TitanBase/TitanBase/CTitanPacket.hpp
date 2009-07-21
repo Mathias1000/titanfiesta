@@ -5,6 +5,7 @@ public:
 		_Size = PACKET_HEADER_SIZE;
 		_Command = command;
 		_CurPos = PACKET_HEADER_SIZE;
+		_HeaderSize = PACKET_HEADER_SIZE;
 	}
 	~CTitanPacket(){
 	}
@@ -101,11 +102,13 @@ public:
 
 	template <typename T> void Set( T val, word pos, word offset = PACKET_HEADER_SIZE )
 	{
+		if (offset == PACKET_HEADER_SIZE) offset = _HeaderSize;
 		*((T*)&_Buffer[pos + offset]) = val;
 	}
 
 	template <typename T> T Get( word pos, word offset = PACKET_HEADER_SIZE )
 	{
+		if (offset == PACKET_HEADER_SIZE) offset = _HeaderSize;
 		return *((T*)&_Buffer[pos + offset]);
 	}
 
@@ -255,6 +258,13 @@ public:
 		return _Size;
 	}
 
+	void HeaderSize( dword nSize ){
+		_HeaderSize = nSize;
+	}
+	dword HeaderSize(){
+		return _HeaderSize;
+	}
+
 	void Pos( dword nPos ){
 		_CurPos = nPos;
 	}
@@ -273,10 +283,16 @@ public:
 	byte* Buffer(){
 		return _Buffer;
 	}
+
+	byte* Data(){
+		return (byte*)(_Buffer + _HeaderSize);
+	}
+
 protected:
 	byte _Buffer[0x8000];
 
 	dword _Size;
 	dword _Command;
 	dword _CurPos;
+	dword _HeaderSize;
 };
