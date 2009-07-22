@@ -273,8 +273,7 @@ PACKETHANDLER(pakCreateChar){
 
 	CPacket pakout(0x1406);
 	pakout.Add<byte>(0x01); // # of chars
-	pakout.Add<word>(0x0000); // Char ID
-	pakout.Add<word>(0x000f); // Str len
+	pakout.Add<dword>(0x0000); // Char ID
 	pakout.AddFixLenStr(name, 0x10); // Name
 	pakout.Add<word>(0x01); // Level
 	pakout.Add<byte>(slot); // Slot
@@ -397,7 +396,6 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
 	while (row = mysql_fetch_row(result)) {
 		pakout.Add<dword>(atoi(row[0])); // Character ID
-		//pakout.Add<word>(0x000f); // Name length (Always 16?)
 		 pakout.AddFixLenStr(row[1], 0x10); // Name
 		 pakout.Add<word>(atoi(row[2])); // Level
 		 pakout.Add<byte>(atoi(row[3])); // Char slot

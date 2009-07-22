@@ -1,5 +1,6 @@
 #include "main.h"
 #include "CGameServer.hpp"
+#include "CCharacter.h"
 
 bool CGameServer::OnServerReady(){
 	CTitanIniReader ini("GameServer.ini");
@@ -50,6 +51,9 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			case 0x1072:
 				Log(MSG_DEBUG, "0x1072 Stop Quitting Game! WE WANT MORE PLAY!");
 			break;
+			case 0x1803: // pakClientReady
+				PACKETRECV(pakClientReady);
+			break;
 			case 0x2001:
 				PACKETRECV(pakChat);
 			break;
@@ -76,6 +80,9 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			break;
 			case 0x202A:
 				PACKETRECV(pakEndRest);
+			break;
+			case 0x300b:
+				PACKETRECV(pakMoveInvItem);
 			break;
 			case 0x3020: // Request Premium Items
 			{
@@ -156,6 +163,41 @@ PACKETHANDLER(pakEndRest){
 	return true;
 }
 
+PACKETHANDLER(pakMoveInvItem){
+	byte SourceSlot = pak->Read<byte>();
+	byte SourceState = pak->Read<byte>();
+	byte DestSlot = pak->Read<byte>();
+	byte DestState = pak->Read<byte>();
+	if (SourceState != DestState) return false; // Unhandles at this time.
+
+	CPacket pakout(0x3001); // pakMoveItem
+	pakout.Add<byte>(DestSlot);
+	pakout.Add<byte>(DestState);
+	pakout.Add<byte>(SourceSlot);
+	pakout.Add<byte>(SourceState);
+	pakout.Add<word>(0xFFFF);
+	SendPacket(thisclient, &pakout); // Clear Source Slot
+	// Clear Packet
+	pakout.Size(pakout.HeaderSize());
+	pakout.Pos(pakout.Size());
+
+	pakout.Add<byte>(SourceSlot);
+	pakout.Add<byte>(SourceState);
+	pakout.Add<byte>(DestSlot);
+	pakout.Add<byte>(DestState);
+	{
+		f_date exp;
+		exp.year = 10; exp.month = 4; exp.day = 17; exp.hour = 13; exp.minute = 37;
+		pakout.Add<word>(0x0007); // ItemID
+		pakout.Add<byte>(0x03); // Refine
+		pakout.Add<word>(0x00); // Unknown
+		pakout.Add<f_date>(exp); // Expire Date
+		pakout.Add<byte>(0x01); // Stat count | Visible
+	}
+	SendPacket(thisclient, &pakout);
+	return true;
+}
+
 PACKETHANDLER(pakRest){
 	CPacket pakout(0x2028);
 	pakout << word(0x0a81);
@@ -180,6 +222,54 @@ PACKETHANDLER(pakMove) {
 
 	for (dword i = 0; i < ClientList.size(); i++)
 		SendPacket((CGameClient*)ClientList.at(i), &pakout);
+
+	return true;
+}
+
+PACKETHANDLER(pakClientReady) {
+	CPacket pakident(0x1c06);
+		pakident.Add<word>(thisclient->clientid);
+		pakident.AddFixLenStr(thisclient->charname, 0x10);
+		pakident.Add<dword>(thisclient->curY);
+		pakident.Add<dword>(thisclient->curX);
+		pakident.Add<byte>(0);
+		pakident.Add<byte>(0x01);
+		pakident.Add<byte>(0x09);
+		pakident.Add<byte>(0xa5);
+		pakident.Add<byte>(0x05);
+		pakident.Add<byte>(0x16);
+		pakident.Add<byte>(0x04);
+		pakident.Fill<byte>(0xff, 0x28);
+		pakident.Add<dword>(0x00);
+		pakident.Add<word>(0xffff);
+		pakident.Add<byte>(0xff);
+		pakident.Fill<byte>(0x00, 0x34);
+
+	// Send all users
+	for (dword i = 0; i < ClientList.size(); i++) {
+		CGameClient* c = (CGameClient*)ClientList.at(i);
+		if (c == NULL) continue;
+		CPacket pakout(0x1c06);
+		pakout.Add<word>(c->clientid);
+		pakout.AddFixLenStr(c->charname, 0x10);
+		pakout.Add<dword>(c->curY);
+		pakout.Add<dword>(c->curX);
+		pakout.Add<byte>(0);
+		pakout.Add<byte>(0x01);
+		pakout.Add<byte>(0x09);
+		pakout.Add<byte>(0xa5);
+		pakout.Add<byte>(0x05);
+		pakout.Add<byte>(0x16);
+		pakout.Add<byte>(0x04);
+		pakout.Fill<byte>(0xff, 0x28);
+		pakout.Add<dword>(0x00);
+		pakout.Add<word>(0xffff);
+		pakout.Add<byte>(0xff);
+		pakout.Fill<byte>(0x00, 0x34);
+
+		SendPacket(thisclient, &pakout); // Send client to thisclient
+		SendPacket(c, &pakident); // Send thisclient to client
+	}
 
 	return true;
 }
@@ -265,25 +355,27 @@ PACKETHANDLER(pakChat){
 				pakout << byte(0x07);//hair
 				pakout << byte(0x01);//hcolour
 				pakout << byte(0x00);//face
+				pakout << word(0x7d89);//Hat
 				pakout << word(0xFFFF);//weapon
 				pakout << word(0x8a45);//body
 				pakout << word(0xFFFF);//shield
 				pakout << word(0xFFFF);//pants
 				pakout << word(0xFFFF);//boots
-				pakout << word(0x7d89);//hat
-				pakout.Fill<byte>(0xFF, 0x1a);
+				pakout.Fill<byte>(0xFF, 0x1c);
 				pakout << byte(0x99);//Refine weapon << 4 | shield
-				pakout << word(0x9999);
-				pakout << byte(0x00);//0x25 nothing special
-				pakout << byte(26);//Current "Emote"
-				pakout << word(0x0000);//0x00 nothing?
-				pakout << word(0xFFFF);//TitleId
+				pakout << word(0x0000);
+				pakout << byte(0x00);
+				pakout << word(0xffff);
+				pakout << byte(26);
+				pakout << word(0xffff);
+				pakout << word(0xFFFF);//TitleId/titlelevel
 				pakout << word(0x00);//Monster ID For Title
 				//0x27 bytes of bit array, oh joys.
 				pakout.Fill<byte>(0x00, 0x21);
 				pakout << byte(0x40);
-				pakout.Fill<byte>(0x00, 0x05);
-				pakout << byte(0x02);
+				pakout.Fill<byte>(0x00, 0x06);
+				pakout << dword(0x00); // GuildID
+				pakout << word(0x0200);
 			}
 			SendPacket(thisclient, &pakout);
 			{
@@ -565,8 +657,7 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Char Info
 		CPacket pakout(0x1038);
-			pakout << thisclient->charid;
-			pakout << word(0x000f);
+			pakout << (dword)thisclient->charid;
 			pakout << FixLenStr(thisclient->charname, 0x10);
 			pakout << thisclient->lastslot; // Slot
 			pakout << byte(atoi(row[6])); // Level
@@ -579,8 +670,8 @@ PACKETHANDLER(pakUserLogin){
 			pakout << dword(0x0000); // Fame
 			pakout << qword(0x1d1a); // Money
 			pakout.AddFixLenStr(row[9], 0x0C); // Cur map
-			pakout << dword(thisclient->curY); // X
-			pakout << dword(thisclient->curX); // Y
+			pakout << dword(thisclient->curY); // Y
+			pakout << dword(thisclient->curX); // X
 			pakout << byte(0x5a); // Starting Rotation
 			pakout << byte(0x01); // STR+
 			pakout << byte(0x02); // END+
@@ -613,8 +704,7 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Quests?
 		CPacket pakout(0x103a);
-			pakout << thisclient->charid;
-			pakout << word(0x0f);
+			pakout << (dword)thisclient->charid;
 			pakout << byte(0x01);
 			pakout << byte(0x00); // Count
 		SendPacket(thisclient, &pakout);
@@ -622,8 +712,7 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Basic Action? <-- hell no.
 		CPacket pakout(0x103b);
-			pakout << thisclient->charid;
-			pakout << word(0x0f);
+			pakout << (dword)thisclient->charid;
 			pakout << word(0x00);
 		SendPacket(thisclient, &pakout);
 	}
@@ -631,8 +720,7 @@ PACKETHANDLER(pakUserLogin){
 	{	// Active Skill list
 		CPacket pakout(0x103d);
 		pakout << byte(0x00); // Unk
-		pakout << thisclient->charid; // Char ID
-		pakout << word(0x000f); // Unk
+		pakout << (dword)thisclient->charid; // Char ID
 		pakout << word(0x01); // Num of skills
 		{ // For num of skills
 			pakout << word(0x18D8); // Skill ID [Inferno01]
@@ -662,39 +750,63 @@ PACKETHANDLER(pakUserLogin){
 			pakout.Add<byte>(0x0c); // Size
 			pakout.Add<byte>(0x00); // Slot
 			pakout.Add<byte>(0x24); // State?
-			pakout.Add<word>(0x8955); // ItemID
+			pakout.Add<word>(0x0007); // ItemID
+			pakout.Add<byte>(0x03); // Refine
+			pakout.Add<word>(0x0406); // Unknown
 			pakout.Add<f_date>(exp); // Expire Date
-			pakout.Add<byte>(0x00); // Unk
-			pakout.Add<byte>(0x00); // Unk
-			pakout.Add<byte>(0x00); // Unk
-			pakout.Add<byte>(0x01); // Unk
+			pakout.Add<byte>(0x00); // Stat count | Visible
 		}
 		{
-			pakout.Add<byte>(0x31); // Size
+			pakout.Add<byte>(0x34); // Size
 			pakout.Add<byte>(0x01); // Slot
 			pakout.Add<byte>(0x24); // State?
 			pakout.Add<word>(0x2CFF); // ItemID
 			pakout.Add<byte>(6); // Refine
 			pakout.Add<word>(0x00); // Unknown
-			pakout.Add<word>(0xFFFF); // Title1
-			pakout.Add<dword>(0x00); // Unknown1
+			pakout.Add<word>(0x0101); // Title1
+			pakout.Add<dword>(0x24); // Kills1
 			pakout.Add<word>(0xFFFF); // Title2
-			pakout.Add<dword>(0x00); // Unknown2
+			pakout.Add<dword>(0x00); // Kills2
 			pakout.Add<word>(0xFFFF); // Title3
-			pakout.Add<dword>(0x00); // Unknown3
-			pakout.Add<word>(0xFFFF); // Title4
-			pakout.Add<dword>(0x00); // Unknown4
+			pakout.Add<dword>(0x00); // Kills3
+			pakout.Add<word>(0x0000); // Unknown
 			pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
-			pakout.Add<byte>(0x00); // Unknown
-			pakout.Add<byte>(0x01); // Unknown
+			pakout.Add<byte>(0x00);
+			pakout.Add<dword>(0x00); // Expire
+			pakout.Add<byte>(1 << 1 | 1); // Count << 1 | Visible
+			pakout.Add<byte>(0x00); // Str
+			pakout.Add<word>(0x10); // Value
 		}
 		SendPacket(thisclient, &pakout);
 	}
 
 	{	// Equips
 		CPacket pakout(0x1047);
-			pakout << byte(0x00); // Count
+			pakout << byte(0x01); // Count
 			pakout << byte(0x08); // Type
+
+		{
+			pakout.Add<byte>(0x34); // Size
+			pakout.Add<byte>(0x01); // Slot
+			pakout.Add<byte>(0x08 << 2); // State?
+			pakout.Add<word>(0x2CFF); // ItemID
+			pakout.Add<byte>(6); // Refine
+			pakout.Add<word>(0x00); // Unknown
+			pakout.Add<word>(0x0001); // Title1
+			pakout.Add<dword>(0x24); // Kills1
+			pakout.Add<word>(0xFFFF); // Title2
+			pakout.Add<dword>(0x00); // Kills2
+			pakout.Add<word>(0xFFFF); // Title3
+			pakout.Add<dword>(0x00); // Kills3
+			pakout.Add<word>(0x0000); // Unknown
+			pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
+			pakout.Add<byte>(0x00);
+			pakout.Add<dword>(0x00); // Expire
+			pakout.Add<byte>(1 << 1 | 1); // Count << 1 | Visible
+			pakout.Add<byte>(0x00); // Str
+			pakout.Add<word>(0x10); // Value
+		}
+
 		SendPacket(thisclient, &pakout);
 	}
 
@@ -742,50 +854,6 @@ PACKETHANDLER(pakUserLogin){
 			pakout << word(thisclient->clientid);
 			pakout.AddBytes((byte*)packet1802, 236);
 		SendPacket(thisclient, &pakout);
-	}
-	{
-		CPacket pakident(0x1c06);
-			pakident.Add<word>(thisclient->clientid);
-			pakident.AddFixLenStr(thisclient->charname, 0x10);
-			pakident.Add<dword>(thisclient->curY);
-			pakident.Add<dword>(thisclient->curX);
-			pakident.Add<byte>(0);
-			pakident.Add<byte>(0x01);
-			pakident.Add<byte>(0x09);
-			pakident.Add<byte>(0xa5);
-			pakident.Add<byte>(0x05);
-			pakident.Add<byte>(0x16);
-			pakident.Add<byte>(0x04);
-			pakident.Fill<byte>(0xff, 0x28);
-			pakident.Add<dword>(0x00);
-			pakident.Add<word>(0xffff);
-			pakident.Add<byte>(0xff);
-			pakident.Fill<byte>(0x00, 0x34);
-
-		// Send all users
-		for (dword i = 0; i < ClientList.size(); i++) {
-			CGameClient* c = (CGameClient*)ClientList.at(i);
-			CPacket pakout(0x1c06);
-			pakout.Add<word>(c->clientid);
-			pakout.AddFixLenStr(c->charname, 0x10);
-			pakout.Add<dword>(c->curY);
-			pakout.Add<dword>(c->curX);
-			pakout.Add<byte>(0);
-			pakout.Add<byte>(0x01);
-			pakout.Add<byte>(0x09);
-			pakout.Add<byte>(0xa5);
-			pakout.Add<byte>(0x05);
-			pakout.Add<byte>(0x16);
-			pakout.Add<byte>(0x04);
-			pakout.Fill<byte>(0xff, 0x28);
-			pakout.Add<dword>(0x00);
-			pakout.Add<word>(0xffff);
-			pakout.Add<byte>(0xff);
-			pakout.Fill<byte>(0x00, 0x34);
-
-			SendPacket(thisclient, &pakout); // Send client to thisclient
-			SendPacket(c, &pakident); // Send thisclient to client
-		}
 	}
 
 	db->QFree(result);

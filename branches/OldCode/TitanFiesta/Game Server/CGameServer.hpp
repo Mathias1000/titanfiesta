@@ -18,7 +18,7 @@ public:
 	char* password;
 	char* charname;
 	int id;
-	word charid;
+	dword charid;
 	int accesslevel;
 	byte lastslot;
 	int loginid;
@@ -92,11 +92,13 @@ public:
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 
 	PACKETHANDLER(pakUserLogin);
+	PACKETHANDLER(pakClientReady);
 	PACKETHANDLER(pakChat);
 	PACKETHANDLER(pakShout);
 	PACKETHANDLER(pakRest);
 	PACKETHANDLER(pakMove);
 	PACKETHANDLER(pakEndRest);
+	PACKETHANDLER(pakMoveInvItem);
 	PACKETHANDLER(pakSetTitle);
 	PACKETHANDLER(pakBasicAction);
 
