@@ -35,7 +35,7 @@ CREATE TABLE `users` (
   `username` varchar(18) collate latin1_general_ci NOT NULL,
   `password` varchar(32) collate latin1_general_ci NOT NULL,
   `accesslevel` tinyint(1) NOT NULL,
-  `loginid` smallint(2) unsigned NOT NULL,
+  `loginid` binary(64) NOT NULL,
   `lastslot` tinyint(4) NOT NULL default '0',
   PRIMARY KEY  (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci AUTO_INCREMENT=1 ;

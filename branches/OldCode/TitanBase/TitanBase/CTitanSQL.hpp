@@ -62,6 +62,14 @@ public:
 		return result;
 	}
 
+	string MakeSQLSafe( string sqlString, dword sqlLength ){
+		string result = (string)malloc(sqlLength * 2 + 1);
+		if ( !result ) return NULL;
+		mysql_real_escape_string(&_MySql, result, sqlString, sqlLength);
+
+		return result;
+	}
+
 	MYSQL_RES* DoSQL(char *Format, ...){		
 		string Buffer;
 		int retval;

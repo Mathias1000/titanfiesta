@@ -11,7 +11,7 @@ typedef unsigned __int32 dword;
 #define DELVEC(x) for(dword i = 0; i < x.size(); i++){DEL(x.at(i));} x.clear();
 #define DELVECARR(x) for(dword i = 0; i < x.size(); i++){DELARR(x.at(i));} x.clear();
 
-#include "CListCtrlEx/listctrlex.h"
+//#include "CListCtrlEx/listctrlex.h"
 #include <vector>
 #include "CTitanFile.hpp"
 #include "CSHN.hpp"

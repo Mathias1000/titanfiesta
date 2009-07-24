@@ -607,6 +607,7 @@ PACKETHANDLER(pakBasicAction) {
 }
 
 PACKETHANDLER(pakUserLogin){
+	MYSQL_RES* result = NULL;
 	char charname[0x13];
 	charname[0x12] = 0;
 	memcpy(charname, pak->Data() + 2, 0x12);
@@ -615,12 +616,12 @@ PACKETHANDLER(pakUserLogin){
 	thisclient->loginid = pak->Get<word>(0);
 	if(_strcmpi(thisclient->charname, charname)){
 		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->charname, charname);
-		return false;
+		goto authFail;
 	}
 
 	Log(MSG_DEBUG, "Charname: %s, Unique Id: %d", thisclient->charname, thisclient->loginid);
 
-	MYSQL_RES* result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
+	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
 	if(!result || mysql_num_rows(result) != 1){
 		Log(MSG_DEBUG, "SELECT returned bollocks");
 		goto authFail;
@@ -629,11 +630,8 @@ PACKETHANDLER(pakUserLogin){
 	MYSQL_ROW row = mysql_fetch_row(result);
 
 	{	// Check loginid
-		byte buf[0x40];
-		db->DecodeBinary(row[2], buf);
-		word loginid = *(word*)(buf);
-		if(loginid != thisclient->loginid){
-		Log(MSG_DEBUG, "Incorrect loginid");
+		if (thisclient->loginid != ((word*)row[2])[0]) {
+			Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->loginid, ((word*)row[2])[0]);
 		thisclient->id = -1;
 		goto authFail;
 		}
@@ -860,10 +858,12 @@ PACKETHANDLER(pakUserLogin){
 	return true;
 authFail:
 	{
-		CPacket pakout(0x0C09);
-		pakout << word(0x44);
+		CPacket pakout(0x1804);
+		pakout << word(0x146);
+		pakout << byte(0x12);
 		SendPacket(thisclient, &pakout);
 	}
+	if (result != NULL)
 	db->QFree(result);
 	return true;
 }

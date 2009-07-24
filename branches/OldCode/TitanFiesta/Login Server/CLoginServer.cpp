@@ -102,10 +102,10 @@ PACKETHANDLER(pakJoinServer){
 	for (int i = 0; i < 16; i++) {
 		*((dword*)thisclient->loginid + i) = rg.BRandom();
 	}
-	char* buf = db->EncodeBinary(thisclient->loginid, 0x40);
-	Log(MSG_DEBUG, "LoginID: %s", buf);
+	char* buf = db->MakeSQLSafe((string)thisclient->loginid, 0x40);
+
 	db->ExecSQL("UPDATE `users` SET `loginid`='%s' WHERE `id`='%d'", buf, thisclient->id);
-	delete[] buf;
+	free( buf );
 
 	CPacket pakout(0xC0C);
 	pakout.Add<byte>(srv->status); // Server Status
@@ -118,9 +118,10 @@ PACKETHANDLER(pakJoinServer){
 
 // USA Client Login
 PACKETHANDLER(pakTokenLogin){
+	MYSQL_RES* result = NULL;
 	if (SERVERTYPE != USASERVER) {
 		Log(MSG_DEBUG, "USA client tried connecting");
-		return false;
+		goto authFail;
 	}
 
 	char md5hash[33];
@@ -133,9 +134,9 @@ PACKETHANDLER(pakTokenLogin){
 	thisclient->password = _strdup(md5hash);
 	if(_strcmpi(thisclient->username, username)){
 		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->username, username);
-		return false;
+		goto authFail;
 	}
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`password`,`accesslevel` FROM `users` WHERE `username`='%s'", thisclient->username);
+	result = db->DoSQL("SELECT `id`,`password`,`accesslevel` FROM `users` WHERE `username`='%s'", thisclient->username);
 	if(!result || mysql_num_rows(result) != 1){
 		Log(MSG_DEBUG, "SELECT returned bollocks");
 		goto authFail;
@@ -197,7 +198,8 @@ authFail:
 		pakout.Add<word>(0x44);
 		SendPacket(thisclient, &pakout);
 	}
-	db->QFree(result);
+	if (result != NULL)
+		db->QFree(result);
 	return true;
 }
 

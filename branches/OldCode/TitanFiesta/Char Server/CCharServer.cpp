@@ -299,19 +299,28 @@ PACKETHANDLER(pakCreateChar){
 }
 
 PACKETHANDLER(pakUserLogin){
+	MYSQL_RES* result = NULL;
 	memset(thisclient->username, 0, 0x13);
 	memcpy(thisclient->loginid, pak->Data() + 0x12, 0x40);
 
-	char* buf = db->EncodeBinary(thisclient->loginid, 0x40);
-	Log(MSG_DEBUG, "Unique Id: %s", buf);
+	// Check to make sure that loginid isn't all 0's, otherwise could be used to exploit.
+	{
+		byte loginid[0x40] = {0};
+		if (!memcmp(loginid, thisclient->loginid, 0x40)) {
+			Log(MSG_DEBUG, "Error, player with loginid of NULL connected.");
+			goto authFail;
+		}
+	}
 
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`username`,`accesslevel` FROM `users` WHERE `loginid`='%s'", buf);
+	char* buf = db->MakeSQLSafe((string)thisclient->loginid, 0x40);
+
+	result = db->DoSQL("SELECT `id`,`username`,`accesslevel` FROM `users` WHERE `loginid`='%s'", buf);
 	if(!result || mysql_num_rows(result) != 1){
 		 Log(MSG_DEBUG, "SELECT returned bollocks");
 		delete[] buf;
 		 goto authFail;
 	}
-	delete[] buf;
+	free( buf );
 	
 	MYSQL_ROW row = mysql_fetch_row(result);
 
