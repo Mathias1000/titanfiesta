@@ -2,6 +2,7 @@
 #define PACKETRECV(func) func(thisclient, pak)
 
 #include "CShn.hpp"
+#include "CItems.h"
 
 class CGameClient : public CTitanClient
 {	
@@ -23,6 +24,9 @@ public:
 	byte lastslot;
 	int loginid;
 	word clientid;
+
+	ItemList Inventory;
+	ItemList Equipment;
 
 	dword newX;
 	dword newY;
@@ -46,7 +50,35 @@ public:
 		pakout.Add<word>(thisclient->xorTableLoc);
 		SendPacket(client, &pakout);
 	}
-	void OnClientDisconnect( CTitanClient* thisclient ) {}
+	void OnClientDisconnect( CTitanClient* baseclient ) 
+	{
+		CGameClient* thisclient = (CGameClient*)baseclient;
+		Log(MSG_INFO,"Saving Inventory");
+		//TODO: correct array sizes
+		char inv[1000]; //paranoid
+		char equip[500]; // actually size should be 0x41 * maxitems
+		ItemList::iterator it= thisclient->Inventory.begin();
+		int invSize= 0;
+		for (; it < thisclient->Inventory.end(); it++)
+		{
+			int size= (*it)->Size+1;
+			memcpy(inv+invSize, *it, size);
+			invSize+= size;
+		}	
+		it= thisclient->Equipment.begin();
+		int equipSize= 0;
+		for (; it < thisclient->Equipment.end(); it++)
+		{
+			int size= (*it)->Size+1;
+			memcpy(inv+equipSize, *it, size);
+			equipSize+= size;
+		}	
+		char* s_inv= db->MakeSQLSafe(inv, invSize);
+		char* s_equip= db->MakeSQLSafe(equip, equipSize);
+		MYSQL_RES* result = db->DoSQL("UPDATE `characters` SET `inventory` = '%s', `equip` = '%s' WHERE `id` = %i", s_inv, s_equip, thisclient->charid);
+		free(s_inv);
+		free(s_equip);
+	}
 
 	void EncryptPacket( CTitanClient* baseclient, CTitanPacket* pak ){
 		if(pak->Size() > 0xFF){

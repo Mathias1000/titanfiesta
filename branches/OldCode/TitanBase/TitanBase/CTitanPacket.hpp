@@ -48,7 +48,7 @@ public:
 		_Size += strlen(val);
 	}
 
-	void AddBytes(byte* val, dword len){
+	void AddBytes(void* val, dword len){
 		memcpy(_Buffer + _Size, val, len);
 		_Size += len;
 	} 

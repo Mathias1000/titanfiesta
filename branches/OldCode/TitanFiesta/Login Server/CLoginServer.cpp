@@ -2,6 +2,8 @@
 #include "CLoginServer.hpp"
 #include "../Common/md5.hpp"
 
+//#define SINGLEUSER "blubber"
+
 CRandomMersenne rg((int32)time(0));
 
 bool CLoginServer::OnServerReady(){
@@ -124,14 +126,20 @@ PACKETHANDLER(pakTokenLogin){
 		goto authFail;
 	}
 
+#ifndef SINGLEUSER
 	char md5hash[33];
 	char username[0x12];
 	md5hash[32] = 0;
 	memcpy(md5hash, pak->Buffer() + 3, 32);
 	strcpy_s(username, 0x12, (const char*)pak->Buffer() + 3 + 32);
-
 	thisclient->username = db->MakeSQLSafe(username);
 	thisclient->password = _strdup(md5hash);
+#else
+	char username[0x12]= SINGLEUSER;
+	thisclient->username= SINGLEUSER;
+#endif
+
+	Log(MSG_DEBUG, "%s, %s", thisclient->username, thisclient->password);
 	if(_strcmpi(thisclient->username, username)){
 		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->username, username);
 		goto authFail;
@@ -143,10 +151,12 @@ PACKETHANDLER(pakTokenLogin){
 	}
 	
 	MYSQL_ROW row = mysql_fetch_row(result);
+#ifndef SINGLEUSER
 	if(strcmp(row[1], (const char*)thisclient->password) != 0){
 		Log(MSG_DEBUG, "Incorrect password");
 		goto authFail;
 	}
+#endif
 
 	thisclient->id = atoi(row[0]);
 	thisclient->accesslevel = atoi(row[2]);

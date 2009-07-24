@@ -164,18 +164,26 @@ PACKETHANDLER(pakEndRest){
 }
 
 PACKETHANDLER(pakMoveInvItem){
-	byte SourceSlot = pak->Read<byte>();
-	byte SourceState = pak->Read<byte>();
 	byte DestSlot = pak->Read<byte>();
 	byte DestState = pak->Read<byte>();
+	byte SourceSlot = pak->Read<byte>();
+	byte SourceState = pak->Read<byte>();
 	if (SourceState != DestState) return false; // Unhandles at this time.
+	if (SourceState != 0x09 << 2) return false; //dito
+	
+	ItemNode *a, *b;
+	thisclient->Inventory.Move(SourceSlot, DestSlot, &a, &b);
 
 	CPacket pakout(0x3001); // pakMoveItem
 	pakout.Add<byte>(DestSlot);
 	pakout.Add<byte>(DestState);
 	pakout.Add<byte>(SourceSlot);
 	pakout.Add<byte>(SourceState);
-	pakout.Add<word>(0xFFFF);
+	if (a)
+		pakout.AddBytes(&a->Item, a->Size-2);
+	else 
+		pakout.Add<word>(0xFFFF);
+
 	SendPacket(thisclient, &pakout); // Clear Source Slot
 	// Clear Packet
 	pakout.Size(pakout.HeaderSize());
@@ -185,16 +193,12 @@ PACKETHANDLER(pakMoveInvItem){
 	pakout.Add<byte>(SourceState);
 	pakout.Add<byte>(DestSlot);
 	pakout.Add<byte>(DestState);
-	{
-		f_date exp;
-		exp.year = 10; exp.month = 4; exp.day = 17; exp.hour = 13; exp.minute = 37;
-		pakout.Add<word>(0x0007); // ItemID
-		pakout.Add<byte>(0x03); // Refine
-		pakout.Add<word>(0x00); // Unknown
-		pakout.Add<f_date>(exp); // Expire Date
-		pakout.Add<byte>(0x01); // Stat count | Visible
-	}
+	if (b) 
+		pakout.AddBytes(&b->Item, b->Size-2);
+	else 
+		pakout.Add<word>(0xFFFF);
 	SendPacket(thisclient, &pakout);
+
 	return true;
 }
 
@@ -621,21 +625,21 @@ PACKETHANDLER(pakUserLogin){
 
 	Log(MSG_DEBUG, "Charname: %s, Unique Id: %d", thisclient->charname, thisclient->loginid);
 
-	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
+	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face`, length(c.`inventory`), c.`inventory`, length(c.`equip`), c.`equip` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
 	if(!result || mysql_num_rows(result) != 1){
 		Log(MSG_DEBUG, "SELECT returned bollocks");
 		goto authFail;
 	}
-	
+
 	MYSQL_ROW row = mysql_fetch_row(result);
 
-	{	// Check loginid
-		if (thisclient->loginid != ((word*)row[2])[0]) {
-			Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->loginid, ((word*)row[2])[0]);
-		thisclient->id = -1;
-		goto authFail;
-		}
-	}
+	//{	// Check loginid
+	//	if (thisclient->loginid != ((word*)row[2])[0]) {
+	//		Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->loginid, ((word*)row[2])[0]);
+	//	thisclient->id = -1;
+	//	goto authFail;
+	//	}
+	//}
 
 	thisclient->id = atoi(row[0]);
 	thisclient->username = row[1];
@@ -646,6 +650,46 @@ PACKETHANDLER(pakUserLogin){
 
 	thisclient->curX = thisclient->newX = 3257;
 	thisclient->curY = thisclient->newY = 9502;
+	
+	for (int i= 0; i < atoi(row[13]);)
+	{
+		byte size= row[14][i] + 1;
+		ItemNode *node= (ItemNode *)malloc(size);
+		memcpy(node, row[14]+i, size);
+		thisclient->Inventory.push_back(node);
+		i+= size;
+	}
+	for (int i= 0; i < atoi(row[14]);)
+	{
+		byte size= row[15][i] + 1;
+		ItemNode *node= (ItemNode *)malloc(size);
+		memcpy(node, row[16]+i, size);
+		thisclient->Equipment.push_back(node);
+		i+= size;
+	}
+
+	//Lets add an item for testing:
+	//ItemNode *node= (ItemNode *)malloc(3 + sizeof(ItemWeapon));
+	//node->Size= 2 + sizeof(ItemWeapon);
+	//node->Flags= 0x09 << 2;
+	//node->Pos= 5;
+	//ItemWeapon *wep= (ItemWeapon *)&node->Item;
+	//memset(wep, 0, sizeof(ItemWeapon));
+	//wep->id= 250;
+	//wep->refine= 5;
+	//
+	//wep->statBonisCount= 2<<1|true;
+	//wep->statBonis[0].type= 0;
+	//wep->statBonis[0].value= 5;
+	//wep->statBonis[1].type= 1;
+	//wep->statBonis[1].value= 3;
+
+	//wep->titles[0].monsterId= 2;
+	//wep->titles[0].kills= 3;
+	//strcpy_s(wep->creator, 0x11, "MaxOff");
+	//
+	//thisclient->Inventory.Insert(node);
+	//Item added
 
 	if(thisclient->accesslevel < 1){
 		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
@@ -739,73 +783,53 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Inventory
 		CPacket pakout(0x1047);
-			pakout << byte(0x02); // Count
+			pakout << byte(thisclient->Inventory.size()); // Count
 			pakout << byte(0x09); // Type
-
-		{
-			f_date exp;
-			exp.year = 10; exp.month = 4; exp.day = 17; exp.hour = 13; exp.minute = 37;
-			pakout.Add<byte>(0x0c); // Size
-			pakout.Add<byte>(0x00); // Slot
-			pakout.Add<byte>(0x24); // State?
-			pakout.Add<word>(0x0007); // ItemID
-			pakout.Add<byte>(0x03); // Refine
-			pakout.Add<word>(0x0406); // Unknown
-			pakout.Add<f_date>(exp); // Expire Date
-			pakout.Add<byte>(0x00); // Stat count | Visible
-		}
-		{
-			pakout.Add<byte>(0x34); // Size
-			pakout.Add<byte>(0x01); // Slot
-			pakout.Add<byte>(0x24); // State?
-			pakout.Add<word>(0x2CFF); // ItemID
-			pakout.Add<byte>(6); // Refine
-			pakout.Add<word>(0x00); // Unknown
-			pakout.Add<word>(0x0101); // Title1
-			pakout.Add<dword>(0x24); // Kills1
-			pakout.Add<word>(0xFFFF); // Title2
-			pakout.Add<dword>(0x00); // Kills2
-			pakout.Add<word>(0xFFFF); // Title3
-			pakout.Add<dword>(0x00); // Kills3
-			pakout.Add<word>(0x0000); // Unknown
-			pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
-			pakout.Add<byte>(0x00);
-			pakout.Add<dword>(0x00); // Expire
-			pakout.Add<byte>(1 << 1 | 1); // Count << 1 | Visible
-			pakout.Add<byte>(0x00); // Str
-			pakout.Add<word>(0x10); // Value
-		}
+			
+			ItemList::iterator it= thisclient->Inventory.begin();
+			for (; it < thisclient->Inventory.end(); it++)
+				pakout.AddBytes(*it, (*it)->Size +1);
 		SendPacket(thisclient, &pakout);
 	}
 
 	{	// Equips
+		
 		CPacket pakout(0x1047);
-			pakout << byte(0x01); // Count
+			pakout << byte(thisclient->Equipment.size()); // Count
 			pakout << byte(0x08); // Type
-
-		{
-			pakout.Add<byte>(0x34); // Size
-			pakout.Add<byte>(0x01); // Slot
-			pakout.Add<byte>(0x08 << 2); // State?
-			pakout.Add<word>(0x2CFF); // ItemID
-			pakout.Add<byte>(6); // Refine
-			pakout.Add<word>(0x00); // Unknown
-			pakout.Add<word>(0x0001); // Title1
-			pakout.Add<dword>(0x24); // Kills1
-			pakout.Add<word>(0xFFFF); // Title2
-			pakout.Add<dword>(0x00); // Kills2
-			pakout.Add<word>(0xFFFF); // Title3
-			pakout.Add<dword>(0x00); // Kills3
-			pakout.Add<word>(0x0000); // Unknown
-			pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
-			pakout.Add<byte>(0x00);
-			pakout.Add<dword>(0x00); // Expire
-			pakout.Add<byte>(1 << 1 | 1); // Count << 1 | Visible
-			pakout.Add<byte>(0x00); // Str
-			pakout.Add<word>(0x10); // Value
-		}
-
+			
+			ItemList::iterator it= thisclient->Equipment.begin();
+			for (; it < thisclient->Equipment.end(); it++)
+				pakout.AddBytes(*it, (*it)->Size +1);
 		SendPacket(thisclient, &pakout);
+
+		//CPacket pakout(0x1047);
+		//	pakout << byte(0x01); // Count
+		//	pakout << byte(0x08); // Type
+
+		//{
+		//	pakout.Add<byte>(0x34); // Size
+		//	pakout.Add<byte>(0x01); // Slot
+		//	pakout.Add<byte>(0x08 << 2); // State?
+		//	pakout.Add<word>(0x2CFF); // ItemID
+		//	pakout.Add<byte>(6); // Refine
+		//	pakout.Add<word>(0x00); // Unknown
+		//	pakout.Add<word>(0x0001); // Title1
+		//	pakout.Add<dword>(0x24); // Kills1
+		//	pakout.Add<word>(0xFFFF); // Title2
+		//	pakout.Add<dword>(0x00); // Kills2
+		//	pakout.Add<word>(0xFFFF); // Title3
+		//	pakout.Add<dword>(0x00); // Kills3
+		//	pakout.Add<word>(0x0000); // Unknown
+		//	pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
+		//	pakout.Add<byte>(0x00);
+		//	pakout.Add<dword>(0x00); // Expire
+		//	pakout.Add<byte>(1 << 1 | 1); // Count << 1 | Visible
+		//	pakout.Add<byte>(0x00); // Str
+		//	pakout.Add<word>(0x10); // Value
+		//}
+
+		//SendPacket(thisclient, &pakout);
 	}
 
 	{	// House
