@@ -1,6 +1,4 @@
-#ifndef _ITEMS_H
-#define _ITEMS_H
-
+#pragma once
 #pragma pack (push, 1)
 #pragma warning( push )
 #pragma warning( disable : 4200 )
@@ -36,7 +34,7 @@ enum ItemClass{
 	icRegular=		 0,
 	icCen=			 2,
 	icQuest=		 3,
-	icJewels=		 4,
+	icJewel=		 4,
 	icWeapon=		 5,
 	icArmor=		 6,
 	icShield=		 7,
@@ -82,7 +80,7 @@ int getItemSize(ItemClass c);
 
 struct ItemRegular {
 	word id;
-	word amount;
+	byte amount;
 };
 struct ItemArmor {
 	word id;
@@ -90,7 +88,7 @@ struct ItemArmor {
 	word unknown1;
 	dword ExpireDate;
 	char statBonisCount; 
-	StatBonis statBonis[5];
+	StatBonis statBonis[0];
 };
 struct ItemWeapon {
 	word id;
@@ -101,8 +99,54 @@ struct ItemWeapon {
 	char creator[17];
 	dword ExpireDate;
 	char statBonisCount; 
-	StatBonis statBonis[5];
+	StatBonis statBonis[0];
 };
+
+struct ItemJewel {
+	word id;
+	byte unknown1;
+	byte unknown2;
+	byte unknown3;
+	byte unknown4;
+	byte unknown5;
+};
+
+struct ItemHouse {
+	word id;
+	word unknown1;
+	word unknown2;
+};
+
+struct ItemMover {
+	word id;
+	word fuel;
+	word unknown1; //same as in ItemHouse
+	word unknown2; //same as in ItemHouse
+	word unknown3;
+};
+
+struct ItemQuest {
+	word id;
+	byte amount;
+	byte unknown;
+};
+
+struct ItemShield {
+	word id;
+	byte refine;
+	word unknown1;
+	dword ExpireDate;
+	char unknown2;
+	char unknown3;
+	char unknown4;
+	char unknown5;
+	char unknown6;
+	char unknown7;
+	char unknown8;
+//	char statBonisCount; 
+//	StatBonis statBonis[0];
+};
+
 #pragma warning( pop )
 #pragma pack ( pop )
 
@@ -113,8 +157,13 @@ public:
 		std::vector<ItemNode *>::allocator_type Find(int Slot);
 		int Size();
 		bool Insert(ItemNode* node);
+		ItemNode *ItemList::Insert(byte flags, ItemBase* i, int length);
+		ItemNode *ItemList::Insert(byte pos, byte flags, ItemBase* i, int length);
 		bool Move(int pos1, int pos2, ItemNode **out1= NULL, ItemNode **out2= NULL);
 		bool Remove(int pos);
+		void CorrectOrder();
+private:
+	ItemNode empty;
+	word defaultFlags;
 };
 
-#endif

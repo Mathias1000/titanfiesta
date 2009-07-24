@@ -175,10 +175,11 @@ PACKETHANDLER(pakMoveInvItem){
 	thisclient->Inventory.Move(SourceSlot, DestSlot, &a, &b);
 
 	CPacket pakout(0x3001); // pakMoveItem
-	pakout.Add<byte>(DestSlot);
-	pakout.Add<byte>(DestState);
+
 	pakout.Add<byte>(SourceSlot);
 	pakout.Add<byte>(SourceState);
+	pakout.Add<byte>(DestSlot);
+	pakout.Add<byte>(DestState);
 	if (a)
 		pakout.AddBytes(&a->Item, a->Size-2);
 	else 
@@ -189,10 +190,10 @@ PACKETHANDLER(pakMoveInvItem){
 	pakout.Size(pakout.HeaderSize());
 	pakout.Pos(pakout.Size());
 
-	pakout.Add<byte>(SourceSlot);
-	pakout.Add<byte>(SourceState);
 	pakout.Add<byte>(DestSlot);
 	pakout.Add<byte>(DestState);
+	pakout.Add<byte>(SourceSlot);
+	pakout.Add<byte>(SourceState);
 	if (b) 
 		pakout.AddBytes(&b->Item, b->Size-2);
 	else 
@@ -429,14 +430,18 @@ PACKETHANDLER(pakChat){
 				Log(MSG_DEBUG, "Not enough arguments for &item");
 				return true;
 			}
+			ItemNode *node= CreatePlainItem(thisclient, 9, atoi(itemId));
+			if (node == NULL) {
+				Log(MSG_DEBUG, "Not enough Space in Inventory for &item or invalid itemId");
+				return true;
+			}
 			{
 				CPacket pakout(0x3001);
-				pakout << word(0x9009);
-				pakout << word(0x9009);
-				pakout << strtoword(itemId);
-				pakout << dword(1);//Item Count
-				pakout << word(0);
-				pakout << byte(1);
+				pakout << node->Pos;
+				pakout << node->Flags;
+				pakout << node->Pos;
+				pakout << node->Flags;
+				pakout.AddBytes(&node->Item, node->Size -2);
 				SendPacket(thisclient, &pakout);
 			}
 			{
@@ -659,6 +664,7 @@ PACKETHANDLER(pakUserLogin){
 		thisclient->Inventory.push_back(node);
 		i+= size;
 	}
+	thisclient->Inventory.CorrectOrder();
 	for (int i= 0; i < atoi(row[14]);)
 	{
 		byte size= row[15][i] + 1;
@@ -667,7 +673,7 @@ PACKETHANDLER(pakUserLogin){
 		thisclient->Equipment.push_back(node);
 		i+= size;
 	}
-
+	thisclient->Equipment.CorrectOrder();
 	//Lets add an item for testing:
 	//ItemNode *node= (ItemNode *)malloc(3 + sizeof(ItemWeapon));
 	//node->Size= 2 + sizeof(ItemWeapon);
@@ -890,6 +896,35 @@ authFail:
 	if (result != NULL)
 	db->QFree(result);
 	return true;
+}
+
+ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte ilId, word itemId )
+{
+	CGameClient* thisclient = (CGameClient*)baseclient;
+	ItemList* il;
+	switch ( ilId ) 
+	{
+		case 8:
+			il= &thisclient->Equipment;
+			break;
+		case 9:
+			il= &thisclient->Inventory;
+		break;
+		default: return NULL;  //no such Inventory
+	}
+
+	int cl= itemInfo->GetDwordId( itemId, 4);
+	int size= getItemSize((ItemClass)cl);
+	if (size == -1)
+		return NULL; //ItemClass not yet implemented
+	
+	ItemBase *item= (ItemBase *)malloc(size);
+	memset(item, 0, size);
+	item->id= itemId;
+	ItemNode *result= il->Insert(ilId << 2, item, size);
+	
+	free(item);
+	return result;
 }
 
 void CGameServer::ReceivedISCPacket( CISCPacket* pak ){

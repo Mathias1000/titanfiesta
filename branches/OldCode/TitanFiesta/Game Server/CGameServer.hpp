@@ -120,6 +120,8 @@ public:
 		return true;
 	}
 
+	ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte il, word id );
+
 	void ReceivedISCPacket( CISCPacket* pak );
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 
