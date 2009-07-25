@@ -1,5 +1,8 @@
-#ifndef _ITEMS_H
-#define _ITEMS_H
+#pragma once
+// 4Slots ea 24(6*4);
+#define InventorySize 96
+
+#define EquipmentSize 28
 
 #pragma pack (push, 1)
 #pragma warning( push )
@@ -14,7 +17,7 @@ struct ItemRegular;
 struct ItemWeapon;
 struct ItemArmor;
 
-struct InventoryNode;
+struct ItemNode;
 enum ItemClass;
 struct StatBonis;
 struct weaponTitle;
@@ -25,7 +28,7 @@ struct ItemBase {
 	word id;
 };
 
-struct InventoryNode{
+struct ItemNode{
 	byte Size;
 	byte Pos;
 	byte Flags; //Not sure how to call it
@@ -36,7 +39,7 @@ enum ItemClass{
 	icRegular=		 0,
 	icCen=			 2,
 	icQuest=		 3,
-	icJewels=		 4,
+	icJewel=		 4,
 	icWeapon=		 5,
 	icArmor=		 6,
 	icShield=		 7,
@@ -68,7 +71,7 @@ struct StatBonis{
 	//Dex= 2,
 	//Int= 3,
 	//Spr= 4,
-	int type;
+	byte type;
 	word value;
 } ;
 
@@ -82,7 +85,7 @@ int getItemSize(ItemClass c);
 
 struct ItemRegular {
 	word id;
-	word amount;
+	byte amount;
 };
 struct ItemArmor {
 	word id;
@@ -103,17 +106,52 @@ struct ItemWeapon {
 	char statBonisCount; 
 	StatBonis statBonis[0];
 };
+
+struct ItemJewel {
+	word id;
+	byte unknown1;
+	byte unknown2;
+	byte unknown3;
+	byte unknown4;
+	byte unknown5;
+};
+
+struct ItemHouse {
+	word id;
+	word unknown1;
+	word unknown2;
+};
+
+struct ItemMover {
+	word id;
+	word fuel;
+	word unknown1; //same as in ItemHouse
+	word unknown2; //same as in ItemHouse
+	word unknown3;
+};
+
+struct ItemQuest {
+	word id;
+	byte amount;
+	byte unknown;
+};
+
+struct ItemShield {
+	word id;
+	byte refine;
+	word unknown1;
+	dword ExpireDate;
+	char unknown2;
+	char unknown3;
+	char unknown4;
+	char unknown5;
+	char unknown6;
+	char unknown7;
+	char unknown8;
+//	char statBonisCount; 
+//	StatBonis statBonis[0];
+};
+
 #pragma warning( pop )
 #pragma pack ( pop )
 
-
-class ItemList: std::vector<InventoryNode *>
-{
-public:
-		std::vector<InventoryNode *>::allocator_type Find(int Slot);
-		bool Insert(InventoryNode* node);
-		bool Move(int pos1, int pos2, InventoryNode **out1= NULL, InventoryNode **out2= NULL);
-		bool Remove(int pos);
-};
-
-#endif

@@ -2,12 +2,7 @@
 #define PACKETRECV(func) func(thisclient, pak)
 
 #include "CShn.hpp"
-#include "CItems.h"
-// 4Slots ea 24(6*4);
-#define InventorySize 96
-
-//10Equip slots + 16 style slots
-#define EquipmentSize 26
+#include "..\Common\CItems.h"
 
 class CGameClient : public CTitanClient
 {	
@@ -29,6 +24,9 @@ public:
 	byte lastslot;
 	int loginid;
 	word clientid;
+
+	byte level;
+	byte profession;
 
 	int inventoryCount;
 	ItemNode* inventory[InventorySize]; 

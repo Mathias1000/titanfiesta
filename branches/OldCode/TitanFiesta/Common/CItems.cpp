@@ -1,4 +1,4 @@
-#include "CItems.h"
+#include "..\Common\CItems.h"
 
 int getItemSize(ItemClass c)
 {

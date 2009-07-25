@@ -1,5 +1,6 @@
 #include "main.h"
 #include "CCharServer.hpp"
+#include "..\Common\CItems.h"
 
 bool CCharServer::OnServerReady(){
 	CTitanIniReader ini("CharServer.ini");
@@ -393,17 +394,26 @@ void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
 
 void CCharServer::SendCharList(CCharClient* thisclient) {
 	// Select characters
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face` FROM `characters` WHERE `owner`='%s'", thisclient->username);
+	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face`,length(`equip`),`equip` FROM `characters` WHERE `owner`='%s'", thisclient->username);
 	if(!result){
 		 Log(MSG_DEBUG, "SELECT returned bollocks");
 		 return;
 	}
 	
 	MYSQL_ROW row;
+	word equipment[EquipmentSize];
 	CPacket pakout(0xC14);
 	pakout.Add<word>(*(word*)thisclient->loginid); // Unique ID
 	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
 	while (row = mysql_fetch_row(result)) {
+		memset(&equipment, -1, sizeof(equipment));
+		for (int i= 0; i < atoi(row[10]);)
+		{
+			byte size= row[11][i] + 1;
+			ItemNode *node= (ItemNode*)(row[11]+i);
+			equipment[node->Pos]= node->Item.id;
+			i+= size;
+		}
 		pakout.Add<dword>(atoi(row[0])); // Character ID
 		 pakout.AddFixLenStr(row[1], 0x10); // Name
 		 pakout.Add<word>(atoi(row[2])); // Level
@@ -413,14 +423,18 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 		 pakout.Add<byte>(0x01 | (atoi(row[5]) << 2) | (atoi(row[6]) << 7));//Prof | Gender
 		 pakout.Add<byte>(atoi(row[7]));//Hair Style
 		 pakout.Add<byte>(atoi(row[8]));//Hair Colour
-		 pakout.Add<byte>(atoi(row[9]));//Face Style
 		 // Wiping it to default armor for testing
-		 pakout.Add<word>(0xFFFF); //Weapon [Not Shown]
-		 pakout.Add<word>(0xFFFF);//Body Armour
-		 pakout.Add<word>(0xFFFF); //Shield [Not Shown]
-		 pakout.Add<word>(0xFFFF); //Leg Armour
-		 pakout.Add<word>(0xFFFF); //Boot Armour
-		pakout.Fill<byte>(0xFF, 0x1E);
+		 //in a nutshell its totaly unimportant in where we place them, but
+		 //just to be very we do it very same way the us server does it
+		 //Except: the ones that are ignored
+		 pakout.Add<word>(equipment[ 1]); //Helm [Not Shown]
+		 pakout.Add<word>(equipment[12]); //Weapon [Not Shown]
+		 pakout.Add<word>(equipment[ 7]); //Body Armour
+		 pakout.Add<word>(equipment[10]); //Shield [Not Shown]
+		 pakout.Add<word>(equipment[19]); //Pants
+		 pakout.Add<word>(equipment[21]); //Boots
+		 pakout.Fill<byte>(0xFF, 0x1A);
+		 pakout.Add<word>(equipment[28]); //Pet
 		 pakout.Add<word>(0x0); // 0x0060 on my main char
 		 pakout.Add<byte>(0xf0);
 		 pakout.Add<dword>(0xffffffff);

@@ -180,6 +180,14 @@
 				RelativePath=".\main.cpp"
 				>
 			</File>
+			<Filter
+				Name="Common"
+				>
+				<File
+					RelativePath="..\Common\CItems.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -197,6 +205,10 @@
 			<Filter
 				Name="Common"
 				>
+				<File
+					RelativePath="..\Common\CItems.h"
+					>
+				</File>
 				<File
 					RelativePath="..\Common\Common.h"
 					>

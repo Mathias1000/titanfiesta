@@ -222,8 +222,18 @@ PACKETHANDLER(pakEquipInvItem){
 	
 	if ( thisclient->inventory[pos] == NULL ) return false;//no item to equip
 	
-	int equipSlot= itemInfo->GetDwordId( thisclient->inventory[pos]->Item.id, 6 );
+	word itemId= thisclient->inventory[pos]->Item.id;
+	int equipSlot= itemInfo->GetDwordId( itemId, 6 );
 	if ( !equipSlot ) return false;//item cant be equiped
+	
+	if ( thisclient->accesslevel < 10 )
+	{
+		if ( itemInfo->GetDwordId( itemId, 9 ) > thisclient->level)
+			return false; //Level to low
+		if ( ( ( itemInfo->GetDwordId( itemId, 29 ) >> thisclient->profession ) & 0x1 ) == 0)
+			return false; //wrong class
+	}
+	
 	ItemNode *a= thisclient->inventory[pos], *b= thisclient->equipment[equipSlot];
 
 	CPacket pakout( 0x3002 );
@@ -744,6 +754,8 @@ PACKETHANDLER(pakUserLogin){
 	thisclient->lastslot = atoi(row[4]);
 	thisclient->charid = atoi(row[5]);
 	thisclient->clientid = thisclient->charid; // FIXME: Find a better way to do this.
+	thisclient->level = atoi(row[6]);
+	thisclient->profession = atoi(row[7]);
 
 	thisclient->curX = thisclient->newX = 3257;
 	thisclient->curY = thisclient->newY = 9502;
@@ -805,7 +817,7 @@ PACKETHANDLER(pakUserLogin){
 			pakout << (dword)thisclient->charid;
 			pakout << FixLenStr(thisclient->charname, 0x10);
 			pakout << thisclient->lastslot; // Slot
-			pakout << byte(atoi(row[6])); // Level
+			pakout << thisclient->level; // Level
 			pakout << qword(0x00); // Total Exp
 			pakout << dword(0x00); // Unk - Doesn't appear to change anything
 			pakout << word(0x000f); // HP Stones
@@ -840,7 +852,7 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Look info
 		CPacket pakout(0x1039);
-			pakout << byte(0x01 | (atoi(row[7]) << 2) | (atoi(row[8]) << 7)); // Class
+			pakout << byte(0x01 | (thisclient->profession << 2) | (atoi(row[8]) << 7)); // Class
 			pakout << byte(atoi(row[10])); // Hair
 			pakout << byte(atoi(row[11])); // Hair Color
 			pakout << byte(atoi(row[12])); // Face
