@@ -148,6 +148,8 @@ public:
 	PACKETHANDLER(pakMoveInvItem);
 	PACKETHANDLER(pakSetTitle);
 	PACKETHANDLER(pakBasicAction);
+	PACKETHANDLER(pakEquipInvItem);
+	PACKETHANDLER(pakUnequipInvItem);
 
 private:
 	CServerData ServerData;

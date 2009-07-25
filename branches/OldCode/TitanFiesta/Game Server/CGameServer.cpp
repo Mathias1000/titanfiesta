@@ -81,8 +81,14 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			case 0x202A:
 				PACKETRECV(pakEndRest);
 			break;
-			case 0x300b:
+			case 0x300B:
 				PACKETRECV(pakMoveInvItem);
+			break;
+			case 0x300F:
+				PACKETRECV(pakEquipInvItem);
+			break;
+			case 0x3012:
+				PACKETRECV(pakUnequipInvItem);
 			break;
 			case 0x3020: // Request Premium Items
 			{
@@ -208,6 +214,84 @@ PACKETHANDLER(pakMoveInvItem){
 		pakout.Add<word>(0xFFFF);
 	SendPacket(thisclient, &pakout);
 
+	return true;
+}
+
+PACKETHANDLER(pakEquipInvItem){
+	byte pos= pak->Read<byte>();
+	
+	if ( thisclient->inventory[pos] == NULL ) return false;//no item to equip
+	
+	int equipSlot= itemInfo->GetDwordId( thisclient->inventory[pos]->Item.id, 6 );
+	if ( !equipSlot ) return false;//item cant be equiped
+	ItemNode *a= thisclient->inventory[pos], *b= thisclient->equipment[equipSlot];
+
+	CPacket pakout( 0x3002 );
+	pakout << a->Pos;
+	pakout << a->Flags;
+	pakout.Add<char>(equipSlot);
+	pakout.AddBytes( &a->Item, a->Size -2 );
+
+	CPacket pakout2( 0x3001 );
+	pakout2.Add<char>(equipSlot);
+	pakout2.Add<char>(8 << 2);
+	pakout2 << a->Pos;
+	pakout2.Add<char>(9 << 2);
+	if (b) 
+		pakout2.AddBytes(&b->Item, b->Size-2);
+	else 
+		pakout2.Add<word>(0xFFFF);
+	
+	//updates
+	thisclient->inventory[pos]= b;
+	thisclient->equipment[equipSlot]= a;
+	if (b) {
+		b->Pos= a->Pos;
+		b->Flags= 9 << 2;
+	} else {
+		thisclient->inventoryCount-= 1;
+		thisclient->equipmentCount+= 1;
+	}
+	a->Pos= equipSlot;
+	a->Flags= 8 << 2;
+
+	SendPacket(thisclient, &pakout);
+	SendPacket(thisclient, &pakout2);
+	return true;
+}
+
+PACKETHANDLER(pakUnequipInvItem) {
+	byte from= pak->Read<byte>();
+	byte to= pak->Read<byte>();
+
+	if ( (thisclient->equipment[from] == NULL) || (thisclient->inventory[to] != NULL) )
+		return false; //No item to unequip or there is already an item where we place it
+	
+	ItemNode *node= thisclient->equipment[from];
+	
+	CPacket pakout( 0x3002 );
+	pakout << to;
+	pakout.Add<char>(9 << 2);
+	pakout << from;
+	pakout.Add<word>(0xFFFF);
+
+	CPacket pakout2( 0x3001 );
+	pakout2 << from;
+	pakout2.Add<char>(8 << 2);
+	pakout2 << to;
+	pakout2.Add<char>(9 << 2);
+	pakout2.AddBytes(&node->Item, node->Size-2);
+	
+	//Update
+	thisclient->inventoryCount-= 1;
+	thisclient->equipmentCount+= 1;
+	thisclient->inventory[to]= node;
+	thisclient->equipment[from]= NULL;
+	node->Flags= 9 << 2;
+	node->Pos= to;
+
+	SendPacket(thisclient, &pakout);
+	SendPacket(thisclient, &pakout2);
 	return true;
 }
 
@@ -677,9 +761,9 @@ PACKETHANDLER(pakUserLogin){
 	}
 	thisclient->equipmentCount= 0;
 	memset(&thisclient->equipment, 0, sizeof(thisclient->equipment));
-	for (int i= 0; i < atoi(row[14]);)
+	for (int i= 0; i < atoi(row[15]);)
 	{
-		byte size= row[15][i] + 1;
+		byte size= row[16][i] + 1;
 		ItemNode *node= (ItemNode *)malloc(size);
 		memcpy(node, row[16]+i, size);
 		thisclient->equipment[node->Pos]= node;
