@@ -3,6 +3,11 @@
 
 #include "CShn.hpp"
 #include "CItems.h"
+// 4Slots ea 24(6*4);
+#define InventorySize 96
+
+//10Equip slots + 16 style slots
+#define EquipmentSize 26
 
 class CGameClient : public CTitanClient
 {	
@@ -25,8 +30,10 @@ public:
 	int loginid;
 	word clientid;
 
-	ItemList Inventory;
-	ItemList Equipment;
+	int inventoryCount;
+	ItemNode* inventory[InventorySize]; 
+	int equipmentCount;
+	ItemNode* equipment[EquipmentSize];
 
 	dword newX;
 	dword newY;
@@ -55,27 +62,33 @@ public:
 		CGameClient* thisclient = (CGameClient*)baseclient;
 		Log(MSG_INFO,"Saving Inventory");
 		//TODO: correct array sizes
-		char inv[1000]; //paranoid
-		char equip[500]; // actually size should be 0x41 * maxitems
-		ItemList::iterator it= thisclient->Inventory.begin();
+		
+		//paranoid, we are assuming every slot is filled with a wep
+		char* inv  = new char[0x41*thisclient->inventoryCount]; 
+		char* equip= new char[0x41*thisclient->equipmentCount];
 		int invSize= 0;
-		for (; it < thisclient->Inventory.end(); it++)
+		for (int i= 0, c= 0; (c < thisclient->inventoryCount) & (i < InventorySize); i++)
 		{
-			int size= (*it)->Size+1;
-			memcpy(inv+invSize, *it, size);
+			if (thisclient->inventory[i] == NULL) continue;
+			else c+= 1;
+			int size= thisclient->inventory[i]->Size+1;
+			memcpy(inv+invSize, thisclient->inventory[i], size);
 			invSize+= size;
 		}	
-		it= thisclient->Equipment.begin();
 		int equipSize= 0;
-		for (; it < thisclient->Equipment.end(); it++)
+		for (int i= 0, c= 0; (c < thisclient->equipmentCount) & (i < EquipmentSize); i++)
 		{
-			int size= (*it)->Size+1;
-			memcpy(inv+equipSize, *it, size);
+			if (thisclient->equipment[i] == NULL) continue;
+			else c+= 1;
+			int size= thisclient->equipment[i]->Size+1;
+			memcpy(equip+equipSize, thisclient->equipment[i], size);
 			equipSize+= size;
 		}	
 		char* s_inv= db->MakeSQLSafe(inv, invSize);
 		char* s_equip= db->MakeSQLSafe(equip, equipSize);
 		MYSQL_RES* result = db->DoSQL("UPDATE `characters` SET `inventory` = '%s', `equip` = '%s' WHERE `id` = %i", s_inv, s_equip, thisclient->charid);
+		free(inv);
+		free(equip);
 		free(s_inv);
 		free(s_equip);
 	}

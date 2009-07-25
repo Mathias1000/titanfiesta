@@ -2,7 +2,7 @@
 #include "CLoginServer.hpp"
 #include "../Common/md5.hpp"
 
-//#define SINGLEUSER "blubber"
+#define SINGLEUSER "blubber"
 
 CRandomMersenne rg((int32)time(0));
 
@@ -107,7 +107,7 @@ PACKETHANDLER(pakJoinServer){
 	char* buf = db->MakeSQLSafe((string)thisclient->loginid, 0x40);
 
 	db->ExecSQL("UPDATE `users` SET `loginid`='%s' WHERE `id`='%d'", buf, thisclient->id);
-	free( buf );
+\	free( buf );
 
 	CPacket pakout(0xC0C);
 	pakout.Add<byte>(srv->status); // Server Status

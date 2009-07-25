@@ -150,20 +150,3 @@ struct ItemShield {
 #pragma warning( pop )
 #pragma pack ( pop )
 
-
-class ItemList: public std::vector<ItemNode *>
-{
-public:
-		std::vector<ItemNode *>::allocator_type Find(int Slot);
-		int Size();
-		bool Insert(ItemNode* node);
-		ItemNode *ItemList::Insert(byte flags, ItemBase* i, int length);
-		ItemNode *ItemList::Insert(byte pos, byte flags, ItemBase* i, int length);
-		bool Move(int pos1, int pos2, ItemNode **out1= NULL, ItemNode **out2= NULL);
-		bool Remove(int pos);
-		void CorrectOrder();
-private:
-	ItemNode empty;
-	word defaultFlags;
-};
-

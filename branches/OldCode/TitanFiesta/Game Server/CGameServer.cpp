@@ -171,15 +171,23 @@ PACKETHANDLER(pakMoveInvItem){
 	if (SourceState != DestState) return false; // Unhandles at this time.
 	if (SourceState != 0x09 << 2) return false; //dito
 	
-	ItemNode *a, *b;
-	thisclient->Inventory.Move(SourceSlot, DestSlot, &a, &b);
+	
+	if ((DestSlot > InventorySize) | (SourceSlot > InventorySize))
+		return false;
+
+	ItemNode *a= thisclient->inventory[DestSlot], *b= thisclient->inventory[SourceSlot];
+	thisclient->inventory[SourceSlot]= a;
+	thisclient->inventory[DestSlot]= b;
+	if (a) a->Pos= SourceSlot;
+	if (b) b->Pos= DestSlot;
+
 
 	CPacket pakout(0x3001); // pakMoveItem
 
-	pakout.Add<byte>(SourceSlot);
-	pakout.Add<byte>(SourceState);
 	pakout.Add<byte>(DestSlot);
 	pakout.Add<byte>(DestState);
+	pakout.Add<byte>(SourceSlot);
+	pakout.Add<byte>(SourceState);
 	if (a)
 		pakout.AddBytes(&a->Item, a->Size-2);
 	else 
@@ -190,10 +198,10 @@ PACKETHANDLER(pakMoveInvItem){
 	pakout.Size(pakout.HeaderSize());
 	pakout.Pos(pakout.Size());
 
-	pakout.Add<byte>(DestSlot);
-	pakout.Add<byte>(DestState);
 	pakout.Add<byte>(SourceSlot);
 	pakout.Add<byte>(SourceState);
+	pakout.Add<byte>(DestSlot);
+	pakout.Add<byte>(DestState);
 	if (b) 
 		pakout.AddBytes(&b->Item, b->Size-2);
 	else 
@@ -638,13 +646,13 @@ PACKETHANDLER(pakUserLogin){
 
 	MYSQL_ROW row = mysql_fetch_row(result);
 
-	//{	// Check loginid
-	//	if (thisclient->loginid != ((word*)row[2])[0]) {
-	//		Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->loginid, ((word*)row[2])[0]);
-	//	thisclient->id = -1;
-	//	goto authFail;
-	//	}
-	//}
+	{	// Check loginid
+		if (thisclient->loginid != ((word*)row[2])[0]) {
+			Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->loginid, ((word*)row[2])[0]);
+		thisclient->id = -1;
+		goto authFail;
+		}
+	}
 
 	thisclient->id = atoi(row[0]);
 	thisclient->username = row[1];
@@ -656,24 +664,29 @@ PACKETHANDLER(pakUserLogin){
 	thisclient->curX = thisclient->newX = 3257;
 	thisclient->curY = thisclient->newY = 9502;
 	
+	thisclient->inventoryCount= 0;
+	memset(&thisclient->inventory, 0, sizeof(thisclient->inventory));
 	for (int i= 0; i < atoi(row[13]);)
 	{
 		byte size= row[14][i] + 1;
 		ItemNode *node= (ItemNode *)malloc(size);
 		memcpy(node, row[14]+i, size);
-		thisclient->Inventory.push_back(node);
+		thisclient->inventory[node->Pos]= node;
 		i+= size;
+		thisclient->inventoryCount+= 1;
 	}
-	thisclient->Inventory.CorrectOrder();
+	thisclient->equipmentCount= 0;
+	memset(&thisclient->equipment, 0, sizeof(thisclient->equipment));
 	for (int i= 0; i < atoi(row[14]);)
 	{
 		byte size= row[15][i] + 1;
 		ItemNode *node= (ItemNode *)malloc(size);
 		memcpy(node, row[16]+i, size);
-		thisclient->Equipment.push_back(node);
+		thisclient->equipment[node->Pos]= node;
 		i+= size;
+		thisclient->equipmentCount+= 1;
 	}
-	thisclient->Equipment.CorrectOrder();
+	
 	//Lets add an item for testing:
 	//ItemNode *node= (ItemNode *)malloc(3 + sizeof(ItemWeapon));
 	//node->Size= 2 + sizeof(ItemWeapon);
@@ -789,24 +802,30 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Inventory
 		CPacket pakout(0x1047);
-			pakout << byte(thisclient->Inventory.size()); // Count
+			pakout << byte(thisclient->inventoryCount); // Count
 			pakout << byte(0x09); // Type
 			
-			ItemList::iterator it= thisclient->Inventory.begin();
-			for (; it < thisclient->Inventory.end(); it++)
-				pakout.AddBytes(*it, (*it)->Size +1);
+			for (int i= 0, c= 0; (c < thisclient->inventoryCount) & (i < InventorySize); i++)
+			{
+				if (thisclient->inventory[i] == NULL) continue;
+				else c+= 1;
+				pakout.AddBytes(thisclient->inventory[i], thisclient->inventory[i]->Size +1);
+			}
 		SendPacket(thisclient, &pakout);
 	}
 
 	{	// Equips
 		
 		CPacket pakout(0x1047);
-			pakout << byte(thisclient->Equipment.size()); // Count
+			pakout << byte(thisclient->equipmentCount); // Count
 			pakout << byte(0x08); // Type
 			
-			ItemList::iterator it= thisclient->Equipment.begin();
-			for (; it < thisclient->Equipment.end(); it++)
-				pakout.AddBytes(*it, (*it)->Size +1);
+			for (int i= 0, c= 0; (c < thisclient->equipmentCount) & (i < EquipmentSize); i++)
+			{
+				if (thisclient->equipment[i] == NULL) continue;
+				else c+= 1;
+				pakout.AddBytes(thisclient->equipment[i], thisclient->equipment[i]->Size +1);
+			}
 		SendPacket(thisclient, &pakout);
 
 		//CPacket pakout(0x1047);
@@ -901,30 +920,42 @@ authFail:
 ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte ilId, word itemId )
 {
 	CGameClient* thisclient = (CGameClient*)baseclient;
-	ItemList* il;
+	ItemNode **il;
+	int size; //amount of slots in item list
 	switch ( ilId ) 
 	{
 		case 8:
-			il= &thisclient->Equipment;
+			il= thisclient->equipment;
+			size= EquipmentSize;
+			thisclient->equipmentCount+= 1;
 			break;
 		case 9:
-			il= &thisclient->Inventory;
+			il= thisclient->inventory;
+			size= InventorySize;
+			thisclient->inventoryCount+= 1;
 		break;
 		default: return NULL;  //no such Inventory
 	}
 
+	int pos;
+	for (pos= 0; pos < size; pos++)
+		if ( il[pos] == NULL ) break;
+
 	int cl= itemInfo->GetDwordId( itemId, 4);
-	int size= getItemSize((ItemClass)cl);
-	if (size == -1)
+	size= 3+ getItemSize((ItemClass)cl); //now size is the size of the node
+	if (size == 2)
 		return NULL; //ItemClass not yet implemented
 	
-	ItemBase *item= (ItemBase *)malloc(size);
-	memset(item, 0, size);
-	item->id= itemId;
-	ItemNode *result= il->Insert(ilId << 2, item, size);
+	ItemNode *node= (ItemNode *)malloc(size);
+	memset(node, 0, size);
+	node->Size= size-1;
+	node->Pos= pos;
+	node->Flags= ilId << 2;
+	node->Item.id= itemId;
 	
-	free(item);
-	return result;
+	il[pos]= node;
+	
+	return node;
 }
 
 void CGameServer::ReceivedISCPacket( CISCPacket* pak ){
