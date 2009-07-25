@@ -318,7 +318,7 @@ PACKETHANDLER(pakUserLogin){
 	result = db->DoSQL("SELECT `id`,`username`,`accesslevel` FROM `users` WHERE `loginid`='%s'", buf);
 	if(!result || mysql_num_rows(result) != 1){
 		 Log(MSG_DEBUG, "SELECT returned bollocks");
-		delete[] buf;
+		free( buf );
 		 goto authFail;
 	}
 	free( buf );
@@ -338,11 +338,6 @@ PACKETHANDLER(pakUserLogin){
 	db->QFree(result);
 	
 	SendCharList(thisclient);
-/*      {
-		 CPacket pakout(0x0826);
-		 pakout.AddBytes((byte*)packet0826, 130);
-		 SendPacket(thisclient, &pakout);
-	}*/
 	return true;
 authFail:
 	{
@@ -423,6 +418,7 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 		 pakout.Add<byte>(0x01 | (atoi(row[5]) << 2) | (atoi(row[6]) << 7));//Prof | Gender
 		 pakout.Add<byte>(atoi(row[7]));//Hair Style
 		 pakout.Add<byte>(atoi(row[8]));//Hair Colour
+		 pakout.Add<byte>(atoi(row[9]));//Face Style
 		 // Wiping it to default armor for testing
 		 //in a nutshell its totaly unimportant in where we place them, but
 		 //just to be very we do it very same way the us server does it

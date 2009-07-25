@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\Includes;."
+				AdditionalIncludeDirectories="&quot;.&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -62,7 +62,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\..\Libs"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -177,13 +176,17 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CItems.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\main.cpp"
 				>
 			</File>
+			<Filter
+				Name="Common"
+				>
+			<File
+					RelativePath="..\Common\CItems.cpp"
+				>
+			</File>
+		</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -199,10 +202,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CItems.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CShn.hpp"
 				>
 			</File>
@@ -213,6 +212,10 @@
 			<Filter
 				Name="Common"
 				>
+				<File
+					RelativePath="..\Common\CItems.h"
+					>
+				</File>
 				<File
 					RelativePath="..\Common\Common.h"
 					>
@@ -314,12 +317,12 @@
 					</File>
 				</Filter>
 			</Filter>
+		</Filter>
 			<Filter
 				Name="Resource Files"
 				Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 				UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 				>
-			</Filter>
 		</Filter>
 	</Files>
 	<Globals>

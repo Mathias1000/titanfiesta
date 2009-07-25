@@ -178,7 +178,7 @@ PACKETHANDLER(pakMoveInvItem){
 	if (SourceState != 0x09 << 2) return false; //dito
 	
 	
-	if ((DestSlot > InventorySize) | (SourceSlot > InventorySize))
+	if ((DestSlot > InventorySize) || (SourceSlot > InventorySize))
 		return false;
 
 	ItemNode *a= thisclient->inventory[DestSlot], *b= thisclient->inventory[SourceSlot];
@@ -901,7 +901,7 @@ PACKETHANDLER(pakUserLogin){
 			pakout << byte(thisclient->inventoryCount); // Count
 			pakout << byte(0x09); // Type
 			
-			for (int i= 0, c= 0; (c < thisclient->inventoryCount) & (i < InventorySize); i++)
+			for (int i= 0, c= 0; (c < thisclient->inventoryCount) && (i < InventorySize); i++)
 			{
 				if (thisclient->inventory[i] == NULL) continue;
 				else c+= 1;
@@ -916,7 +916,7 @@ PACKETHANDLER(pakUserLogin){
 			pakout << byte(thisclient->equipmentCount); // Count
 			pakout << byte(0x08); // Type
 			
-			for (int i= 0, c= 0; (c < thisclient->equipmentCount) & (i < EquipmentSize); i++)
+			for (int i= 0, c= 0; (c < thisclient->equipmentCount) && (i < EquipmentSize); i++)
 			{
 				if (thisclient->equipment[i] == NULL) continue;
 				else c+= 1;

@@ -107,7 +107,7 @@ PACKETHANDLER(pakJoinServer){
 	char* buf = db->MakeSQLSafe((string)thisclient->loginid, 0x40);
 
 	db->ExecSQL("UPDATE `users` SET `loginid`='%s' WHERE `id`='%d'", buf, thisclient->id);
-\	free( buf );
+	free( buf );
 
 	CPacket pakout(0xC0C);
 	pakout.Add<byte>(srv->status); // Server Status
@@ -132,6 +132,7 @@ PACKETHANDLER(pakTokenLogin){
 	md5hash[32] = 0;
 	memcpy(md5hash, pak->Buffer() + 3, 32);
 	strcpy_s(username, 0x12, (const char*)pak->Buffer() + 3 + 32);
+
 	thisclient->username = db->MakeSQLSafe(username);
 	thisclient->password = _strdup(md5hash);
 #else
