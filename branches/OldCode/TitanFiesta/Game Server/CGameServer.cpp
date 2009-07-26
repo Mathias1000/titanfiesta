@@ -293,8 +293,8 @@ PACKETHANDLER(pakUnequipInvItem) {
 	pakout2.AddBytes(&node->Item, node->Size-2);
 	
 	//Update
-	thisclient->inventoryCount-= 1;
-	thisclient->equipmentCount+= 1;
+	thisclient->equipmentCount-= 1;
+	thisclient->inventoryCount+= 1;
 	thisclient->inventory[to]= node;
 	thisclient->equipment[from]= NULL;
 	node->Flags= 9 << 2;
@@ -900,8 +900,8 @@ PACKETHANDLER(pakUserLogin){
 		CPacket pakout(0x1047);
 			pakout << byte(thisclient->inventoryCount); // Count
 			pakout << byte(0x09); // Type
-			
-			for (int i= 0, c= 0; (c < thisclient->inventoryCount) && (i < InventorySize); i++)
+			int i= 0, c= 0;
+			for (; (c < thisclient->inventoryCount) && (i < InventorySize); i++)
 			{
 				if (thisclient->inventory[i] == NULL) continue;
 				else c+= 1;
@@ -1038,6 +1038,9 @@ ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte ilId, wor
 		if ( il[pos] == NULL ) break;
 
 	int cl= itemInfo->GetDwordId( itemId, 4);
+	if (cl == 0 && itemInfo->GetDwordId( itemId, 0) == 0 )//double check cl==0
+		return false;
+
 	size= 3+ getItemSize((ItemClass)cl); //now size is the size of the node
 	if (size == 2)
 		return NULL; //ItemClass not yet implemented
@@ -1048,7 +1051,7 @@ ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte ilId, wor
 	node->Pos= pos;
 	node->Flags= ilId << 2;
 	node->Item.id= itemId;
-	
+
 	il[pos]= node;
 	
 	return node;
