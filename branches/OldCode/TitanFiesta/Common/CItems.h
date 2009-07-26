@@ -141,15 +141,8 @@ struct ItemShield {
 	byte refine;
 	word unknown1;
 	dword ExpireDate;
-	char unknown2;
-	char unknown3;
-	char unknown4;
-	char unknown5;
-	char unknown6;
-	char unknown7;
-	char unknown8;
-//	char statBonisCount; 
-//	StatBonis statBonis[0];
+	char statBonisCount; 
+	StatBonis statBonis[0];
 };
 
 #pragma warning( pop )
