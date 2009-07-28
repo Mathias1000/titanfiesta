@@ -1,14 +1,32 @@
 #define PACKETHANDLER(func) bool CGameServer::func( CGameClient* thisclient, CTitanPacket* pak )
 #define PACKETRECV(func) func(thisclient, pak)
 
-#include "CShn.hpp"
-#include "..\Common\CItems.h"
+#include "..\Common\CShn.hpp"
+#include "..\Common\CItems.hpp"
 
 class CGameClient : public CTitanClient
 {	
 public:
-	CGameClient( ):username(NULL),password(NULL),id(-1),accesslevel(-1){ }
+	CGameClient( ) {
+		username = NULL;
+		password = NULL;
+		id = -1;
+		accesslevel = -1;
+		Inventory = NULL;
+		Equipment = NULL;
+		
+		level = 0;
+		profession = 0;
+		gender = 0;
+		facestyle = 0;
+		hairstyle = 0;
+		haircolor = 0;
+		emote = -1;
+
+	}
 	~CGameClient( ){
+		if(Inventory != NULL) delete Inventory;
+		if(Equipment != NULL) delete Equipment;
 		if(username != NULL)
 			free(username);
 		DELARR(password);
@@ -27,11 +45,14 @@ public:
 
 	byte level;
 	byte profession;
+	byte gender;
+	byte facestyle;
+	byte hairstyle;
+	byte haircolor;
+	byte emote;
 
-	int inventoryCount;
-	ItemNode* inventory[InventorySize]; 
-	int equipmentCount;
-	ItemNode* equipment[EquipmentSize];
+	CItemManager* Inventory;
+	CItemManager* Equipment;
 
 	dword newX;
 	dword newY;
@@ -55,41 +76,7 @@ public:
 		pakout.Add<word>(thisclient->xorTableLoc);
 		SendPacket(client, &pakout);
 	}
-	void OnClientDisconnect( CTitanClient* baseclient ) 
-	{
-		CGameClient* thisclient = (CGameClient*)baseclient;
-		Log(MSG_INFO,"Saving Inventory");
-		//TODO: correct array sizes
-		
-		//paranoid, we are assuming every slot is filled with a wep
-		char* inv  = new char[0x41*thisclient->inventoryCount]; 
-		char* equip= new char[0x41*thisclient->equipmentCount];
-		int invSize= 0;
-		for (int i= 0, c= 0; (c < thisclient->inventoryCount) & (i < InventorySize); i++)
-		{
-			if (thisclient->inventory[i] == NULL) continue;
-			else c+= 1;
-			int size= thisclient->inventory[i]->Size+1;
-			memcpy(inv+invSize, thisclient->inventory[i], size);
-			invSize+= size;
-		}	
-		int equipSize= 0;
-		for (int i= 0, c= 0; (c < thisclient->equipmentCount) & (i < EquipmentSize); i++)
-		{
-			if (thisclient->equipment[i] == NULL) continue;
-			else c+= 1;
-			int size= thisclient->equipment[i]->Size+1;
-			memcpy(equip+equipSize, thisclient->equipment[i], size);
-			equipSize+= size;
-		}	
-		char* s_inv= db->MakeSQLSafe(inv, invSize);
-		char* s_equip= db->MakeSQLSafe(equip, equipSize);
-		MYSQL_RES* result = db->DoSQL("UPDATE `characters` SET `inventory` = '%s', `equip` = '%s' WHERE `id` = %i", s_inv, s_equip, thisclient->charid);
-		free(inv);
-		free(equip);
-		free(s_inv);
-		free(s_equip);
-	}
+	void OnClientDisconnect( CTitanClient* baseclient );
 
 	void EncryptPacket( CTitanClient* baseclient, CTitanPacket* pak ){
 		if(pak->Size() > 0xFF){
@@ -131,8 +118,6 @@ public:
 		return true;
 	}
 
-	ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte il, word id );
-
 	void ReceivedISCPacket( CISCPacket* pak );
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 
@@ -147,6 +132,7 @@ public:
 	PACKETHANDLER(pakSetTitle);
 	PACKETHANDLER(pakBasicAction);
 	PACKETHANDLER(pakEquipInvItem);
+	PACKETHANDLER(pakEquipInvItemSlot);
 	PACKETHANDLER(pakUnequipInvItem);
 
 private:

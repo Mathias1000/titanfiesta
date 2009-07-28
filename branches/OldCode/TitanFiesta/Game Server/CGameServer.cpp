@@ -12,6 +12,12 @@ bool CGameServer::OnServerReady(){
 		Log(MSG_STATUS, "Connected to MYSQL Server");
 	}
 	
+	itemInfo = new CShn();
+	if(!itemInfo->Open("ItemInfo.shn", 0)){
+		Log(MSG_ERROR, "Could not open 'ItemInfo.shn'");
+		return false;
+	}
+	
 	ServerData.flags = 0;
 	ServerData.id = ini.GetInt("Id","Game Server",3);
 	ServerData.ip = Config.BindIp;
@@ -25,11 +31,25 @@ bool CGameServer::OnServerReady(){
 	CISCPacket pakout(TITAN_ISC_IDENTIFY);
 	pakout.Add<CServerData*>( &ServerData );
 	SendISCPacket( &pakout );
+/*
+	CItemManager Inventory(itemInfo, 96);
+	FILE* gh = fopen("Inventory.bin", "rb");
+	fseek(gh, 0, SEEK_END);
+	word size = ftell(gh);
+	fseek(gh, 0, SEEK_SET);
+	byte* buf = new byte[size];
+	fread(buf, size, 1, gh);
+	Inventory.LoadItems(buf);
+	delete[] buf;
+	fclose(gh);
 
-	itemInfo = new CShn();
-	if(!itemInfo->Open("ItemInfo.shn", 0)){
-		Log(MSG_ERROR, "Could not open 'ItemInfo.shn'");
-	}
+	word DumpSize = 0;
+	byte* ItemDump = Inventory.DumpItems(DumpSize);
+	FILE* fh = fopen("itemdump.bin", "wb");
+	fwrite(ItemDump, DumpSize, 1, fh);
+	fclose(fh);
+	Inventory.FreeDump(ItemDump);*/
+
 	return true;
 }
 
@@ -53,6 +73,9 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			break;
 			case 0x1803: // pakClientReady
 				PACKETRECV(pakClientReady);
+			break;
+			case 0x1c01: // pakRequestEntityInformation
+				Log(MSG_DEBUG, "Client wants information about entity %d", pak->Read<word>());
 			break;
 			case 0x2001:
 				PACKETRECV(pakChat);
@@ -86,6 +109,9 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			break;
 			case 0x300F:
 				PACKETRECV(pakEquipInvItem);
+			break;
+			case 0x3010:
+				PACKETRECV(pakEquipInvItemSlot);
 			break;
 			case 0x3012:
 				PACKETRECV(pakUnequipInvItem);
@@ -170,138 +196,155 @@ PACKETHANDLER(pakEndRest){
 }
 
 PACKETHANDLER(pakMoveInvItem){
-	byte DestSlot = pak->Read<byte>();
-	byte DestState = pak->Read<byte>();
 	byte SourceSlot = pak->Read<byte>();
 	byte SourceState = pak->Read<byte>();
+	byte DestSlot = pak->Read<byte>();
+	byte DestState = pak->Read<byte>();
 	if (SourceState != DestState) return false; // Unhandles at this time.
-	if (SourceState != 0x09 << 2) return false; //dito
+	if (SourceState != 0x09 << 2) return false; 
 	
-	
-	if ((DestSlot > InventorySize) || (SourceSlot > InventorySize))
+	if (!thisclient->Inventory->SwapItems(SourceSlot, DestSlot)) {
+		Log(MSG_DEBUG, "Error swapping items. %d -> %d", SourceSlot, DestSlot);
 		return false;
+	}
 
-	ItemNode *a= thisclient->inventory[DestSlot], *b= thisclient->inventory[SourceSlot];
-	thisclient->inventory[SourceSlot]= a;
-	thisclient->inventory[DestSlot]= b;
-	if (a) a->Pos= SourceSlot;
-	if (b) b->Pos= DestSlot;
+	// Technically Source is now Dest, and Dest is now Source.
+	SItemBase* Source = thisclient->Inventory->GetItem(SourceSlot);
+	SItemBase* Dest = thisclient->Inventory->GetItem(DestSlot);
 
-
-	CPacket pakout(0x3001); // pakMoveItem
-
+	CPacket pakout(0x3001);
 	pakout.Add<byte>(DestSlot);
 	pakout.Add<byte>(DestState);
 	pakout.Add<byte>(SourceSlot);
 	pakout.Add<byte>(SourceState);
-	if (a)
-		pakout.AddBytes(&a->Item, a->Size-2);
+	if (Source != NULL)
+		pakout.AddBytes((byte*)Source + 3, Source->Length - 2);
 	else 
-		pakout.Add<word>(0xFFFF);
+		pakout.Add<word>(0xffff);
+	SendPacket(thisclient, &pakout);
 
-	SendPacket(thisclient, &pakout); // Clear Source Slot
-	// Clear Packet
 	pakout.Size(pakout.HeaderSize());
 	pakout.Pos(pakout.Size());
-
 	pakout.Add<byte>(SourceSlot);
 	pakout.Add<byte>(SourceState);
 	pakout.Add<byte>(DestSlot);
 	pakout.Add<byte>(DestState);
-	if (b) 
-		pakout.AddBytes(&b->Item, b->Size-2);
+	if (Dest != NULL)
+		pakout.AddBytes((byte*)Dest + 3, Dest->Length - 2);
 	else 
-		pakout.Add<word>(0xFFFF);
+		pakout.Add<word>(0xffff);
 	SendPacket(thisclient, &pakout);
 
 	return true;
 }
 
 PACKETHANDLER(pakEquipInvItem){
-	byte pos= pak->Read<byte>();
+	byte Slot = pak->Read<byte>();
+	SItemBase* Item = thisclient->Inventory->GetItem(Slot);
+	if (Item == NULL) return false; // Slot is empty
 	
-	if ( thisclient->inventory[pos] == NULL ) return false;//no item to equip
-	
-	word itemId= thisclient->inventory[pos]->Item.id;
-	int equipSlot= itemInfo->GetDwordId( itemId, 6 );
-	if ( !equipSlot ) return false;//item cant be equiped
-	
-	if ( thisclient->accesslevel < 10 )
+	// Get current item in equipslot
+	word EquipSlot = thisclient->Inventory->GetEquipSlot(Item->Id);
+	SItemBase* Equip = thisclient->Equipment->GetItem(EquipSlot);
+
 	{
-		if ( itemInfo->GetDwordId( itemId, 9 ) > thisclient->level)
-			return false; //Level to low
-		if ( ( ( itemInfo->GetDwordId( itemId, 29 ) >> thisclient->profession ) & 0x1 ) == 0)
-			return false; //wrong class
+		CPacket pakout(0x3002); // Modify Equipment
+		pakout.Add<byte>(Slot);
+		pakout.Add<byte>(Item->Type);
+		pakout.Add<byte>(EquipSlot);
+		pakout.AddBytes((byte*)Item + 3, Item->Length - 2); // Skip size/slot/type
+		SendPacket(thisclient, &pakout);
 	}
+	{
+		CPacket pakout(0x3001); // Modify Inventory
+		pakout.Add<byte>(EquipSlot);
+		pakout.Add<byte>(thisclient->Equipment->ItemType() << 2);
+		pakout.Add<byte>(Slot);
+		pakout.Add<byte>(Item->Type);
+		if (Equip != NULL)
+			pakout.AddBytes((byte*)Equip + 3, Equip->Length - 2); // Skip size/slot/type
+		else
+			pakout.Add<word>(0xffff);
+		SendPacket(thisclient, &pakout);
+	}
+
+	// Update inventory/equipment
+	thisclient->Inventory->RemoveItem(Slot, false);
+	if (Equip != NULL) thisclient->Equipment->RemoveItem(EquipSlot, false);
+	thisclient->Equipment->SetItem(Item, EquipSlot);
+	if (Equip != NULL) thisclient->Inventory->SetItem(Equip, Slot);
+	return true;
+}
 	
-	ItemNode *a= thisclient->inventory[pos], *b= thisclient->equipment[equipSlot];
-
-	CPacket pakout( 0x3002 );
-	pakout << a->Pos;
-	pakout << a->Flags;
-	pakout.Add<char>(equipSlot);
-	pakout.AddBytes( &a->Item, a->Size -2 );
-
-	CPacket pakout2( 0x3001 );
-	pakout2.Add<char>(equipSlot);
-	pakout2.Add<char>(8 << 2);
-	pakout2 << a->Pos;
-	pakout2.Add<char>(9 << 2);
-	if (b) 
-		pakout2.AddBytes(&b->Item, b->Size-2);
+PACKETHANDLER(pakEquipInvItemSlot) {
+	byte InvSlot = pak->Read<byte>();
+	byte EquipSlot = pak->Read<byte>();
+	SItemBase* Item = thisclient->Inventory->GetItem(InvSlot);
+	if (Item == NULL) return false; // Slot is empty
+	
+	// Get current item in equipslot
+	SItemBase* Equip = thisclient->Equipment->GetItem(EquipSlot);
+	
+	{
+		CPacket pakout(0x3002); // Modify Equipment
+		pakout.Add<byte>(InvSlot);
+		pakout.Add<byte>(Item->Type);
+		pakout.Add<byte>(EquipSlot);
+		pakout.AddBytes((byte*)Item + 3, Item->Length - 2); // Skip size/slot/type
+		SendPacket(thisclient, &pakout);
+	}
+	{
+		CPacket pakout(0x3001); // Modify Inventory
+		pakout.Add<byte>(EquipSlot);
+		pakout.Add<byte>(thisclient->Equipment->ItemType() << 2);
+		pakout.Add<byte>(InvSlot);
+		pakout.Add<byte>(Item->Type);
+		if (Equip != NULL)
+			pakout.AddBytes((byte*)Equip + 3, Equip->Length - 2); // Skip size/slot/type
 	else 
-		pakout2.Add<word>(0xFFFF);
-	
-	//updates
-	thisclient->inventory[pos]= b;
-	thisclient->equipment[equipSlot]= a;
-	if (b) {
-		b->Pos= a->Pos;
-		b->Flags= 9 << 2;
-	} else {
-		thisclient->inventoryCount-= 1;
-		thisclient->equipmentCount+= 1;
+			pakout.Add<word>(0xffff);
+		SendPacket(thisclient, &pakout);
 	}
-	a->Pos= equipSlot;
-	a->Flags= 8 << 2;
 
-	SendPacket(thisclient, &pakout);
-	SendPacket(thisclient, &pakout2);
+	// Update inventory/equipment
+	thisclient->Inventory->RemoveItem(InvSlot, false);
+	if (Equip != NULL) thisclient->Equipment->RemoveItem(EquipSlot, false);
+	thisclient->Equipment->SetItem(Item, EquipSlot);
+	if (Equip != NULL) thisclient->Inventory->SetItem(Equip, InvSlot);
 	return true;
 }
 
 PACKETHANDLER(pakUnequipInvItem) {
-	byte from= pak->Read<byte>();
-	byte to= pak->Read<byte>();
+	byte SourceSlot = pak->Read<byte>();
+	byte DestSlot = pak->Read<byte>();
 
-	if ( (thisclient->equipment[from] == NULL) || (thisclient->inventory[to] != NULL) )
-		return false; //No item to unequip or there is already an item where we place it
+	SItemBase* Source = thisclient->Equipment->GetItem(SourceSlot);
+	SItemBase* Dest = thisclient->Inventory->GetItem(DestSlot);
+	if (Source == NULL || Dest != NULL) { // No item equipped or slot taken.
+		return false;
+	}
 	
-	ItemNode *node= thisclient->equipment[from];
-	
-	CPacket pakout( 0x3002 );
-	pakout << to;
-	pakout.Add<char>(9 << 2);
-	pakout << from;
-	pakout.Add<word>(0xFFFF);
+	{
+		CPacket pakout(0x3002); // Clear equipped slot.
+		pakout.Add<byte>(DestSlot);
+		pakout.Add<byte>(thisclient->Inventory->ItemType() << 2);
+		pakout.Add<byte>(SourceSlot);
+		pakout.Add<word>(0xffff); // Empty item.
+		SendPacket(thisclient, &pakout);
+	}
+	{
+		CPacket pakout(0x3001); // Put item into inventory
+		pakout.Add<byte>(SourceSlot);
+		pakout.Add<byte>(Source->Type);
+		pakout.Add<byte>(DestSlot);
+		pakout.Add<byte>(thisclient->Inventory->ItemType() << 2);
+		pakout.AddBytes((byte*)Source + 3, Source->Length - 2);
+		SendPacket(thisclient, &pakout);
+	}
 
-	CPacket pakout2( 0x3001 );
-	pakout2 << from;
-	pakout2.Add<char>(8 << 2);
-	pakout2 << to;
-	pakout2.Add<char>(9 << 2);
-	pakout2.AddBytes(&node->Item, node->Size-2);
-	
-	//Update
-	thisclient->equipmentCount-= 1;
-	thisclient->inventoryCount+= 1;
-	thisclient->inventory[to]= node;
-	thisclient->equipment[from]= NULL;
-	node->Flags= 9 << 2;
-	node->Pos= to;
-
-	SendPacket(thisclient, &pakout);
-	SendPacket(thisclient, &pakout2);
+	// Update inventory data.
+	thisclient->Equipment->RemoveItem(SourceSlot, false);
+	thisclient->Inventory->SetItem(Source, DestSlot);
 	return true;
 }
 
@@ -340,17 +383,25 @@ PACKETHANDLER(pakClientReady) {
 		pakident.Add<dword>(thisclient->curY);
 		pakident.Add<dword>(thisclient->curX);
 		pakident.Add<byte>(0);
-		pakident.Add<byte>(0x01);
-		pakident.Add<byte>(0x09);
-		pakident.Add<byte>(0xa5);
-		pakident.Add<byte>(0x05);
-		pakident.Add<byte>(0x16);
-		pakident.Add<byte>(0x04);
+		pakident.Add<byte>(0x01); // State
+		pakident.Add<byte>(thisclient->profession);
+		pakident.Add<byte>(thisclient->gender << 7 | thisclient->profession << 2 | 0x01);
+		pakident.Add<byte>(thisclient->hairstyle);
+		pakident.Add<byte>(thisclient->haircolor);
+		pakident.Add<byte>(thisclient->facestyle);
 		pakident.Fill<byte>(0xff, 0x28);
-		pakident.Add<dword>(0x00);
+		pakident.Add<byte>(0x00); // Refine
+		pakident.Add<word>(0x00);
+		pakident.Add<byte>(0x00);
 		pakident.Add<word>(0xffff);
-		pakident.Add<byte>(0xff);
-		pakident.Fill<byte>(0x00, 0x34);
+		pakident.Add<byte>(thisclient->emote);
+		pakident.Add<word>(0xffff);
+		pakident.Add<byte>(0);
+		pakident.Add<byte>(0);
+		pakident.Add<word>(0);
+		pakident.Fill<byte>(0x00, 0x28);
+		pakident.Add<dword>(0x00);
+		pakident.Add<word>(0x0002);
 
 	// Send all users
 	for (dword i = 0; i < ClientList.size(); i++) {
@@ -362,17 +413,25 @@ PACKETHANDLER(pakClientReady) {
 		pakout.Add<dword>(c->curY);
 		pakout.Add<dword>(c->curX);
 		pakout.Add<byte>(0);
-		pakout.Add<byte>(0x01);
-		pakout.Add<byte>(0x09);
-		pakout.Add<byte>(0xa5);
-		pakout.Add<byte>(0x05);
-		pakout.Add<byte>(0x16);
-		pakout.Add<byte>(0x04);
+		pakout.Add<byte>(0x01); // State
+		pakout.Add<byte>(c->profession);
+		pakout.Add<byte>(c->gender << 7 | c->profession << 2 | 0x01);
+		pakout.Add<byte>(c->hairstyle);
+		pakout.Add<byte>(c->haircolor);
+		pakout.Add<byte>(c->facestyle);
 		pakout.Fill<byte>(0xff, 0x28);
-		pakout.Add<dword>(0x00);
+		pakout.Add<byte>(0x00); // Refine
+		pakout.Add<word>(0x00);
+		pakout.Add<byte>(0x00);
 		pakout.Add<word>(0xffff);
-		pakout.Add<byte>(0xff);
-		pakout.Fill<byte>(0x00, 0x34);
+		pakout.Add<byte>(c->emote);
+		pakout.Add<word>(0xffff);
+		pakout.Add<byte>(0);
+		pakout.Add<byte>(0);
+		pakout.Add<word>(0);
+		pakout.Fill<byte>(0x00, 0x28);
+		pakout.Add<dword>(0x00);
+		pakout.Add<word>(0x0002);
 
 		SendPacket(thisclient, &pakout); // Send client to thisclient
 		SendPacket(c, &pakident); // Send thisclient to client
@@ -532,27 +591,19 @@ PACKETHANDLER(pakChat){
 				Log(MSG_DEBUG, "Not enough arguments for &item");
 				return true;
 			}
-			ItemNode *node= CreatePlainItem(thisclient, 9, atoi(itemId));
-			if (node == NULL) {
-				Log(MSG_DEBUG, "Not enough Space in Inventory for &item or invalid itemId");
-				return true;
+			SItemBase* Item = thisclient->Inventory->CreateItem(atoi(itemId), 9, 0);
+			if (Item == NULL) {
+				Log(MSG_ERROR, "Error creating item. Invalid ID or ItemInfo not loaded");
+				return false;
 			}
-			{
+			thisclient->Inventory->SetItem(Item, thisclient->Inventory->GetNextSlot());
 				CPacket pakout(0x3001);
-				pakout << node->Pos;
-				pakout << node->Flags;
-				pakout << node->Pos;
-				pakout << node->Flags;
-				pakout.AddBytes(&node->Item, node->Size -2);
+			pakout.Add<byte>(Item->Slot);
+			pakout.Add<byte>(Item->Type);
+			pakout.Add<byte>(Item->Slot);
+			pakout.Add<byte>(Item->Type);
+			pakout.AddBytes((byte*)Item + 3, Item->Length - 2);
 				SendPacket(thisclient, &pakout);
-			}
-			{
-				CPacket pakout(0x300A);
-				pakout << strtoword(itemId);
-				pakout << dword(1);//Item Count
-				pakout << word(0x0341);
-				SendPacket(thisclient, &pakout);
-			}
 		}else if(_strcmpi(command, "gmsay") == 0){
 			char* text = origText + strlen("&gmsay ");
 			CPacket pakout(0x6402);
@@ -732,7 +783,7 @@ PACKETHANDLER(pakUserLogin){
 
 	Log(MSG_DEBUG, "Charname: %s, Unique Id: %d", thisclient->charname, thisclient->loginid);
 
-	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face`, length(c.`inventory`), c.`inventory`, length(c.`equip`), c.`equip` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
+	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face`, c.`inventory`, c.`equipment` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
 	if(!result || mysql_num_rows(result) != 1){
 		Log(MSG_DEBUG, "SELECT returned bollocks");
 		goto authFail;
@@ -748,6 +799,10 @@ PACKETHANDLER(pakUserLogin){
 		}
 	}
 
+	// Initialize inventory space.
+	thisclient->Inventory = new CItemManager(itemInfo, MAXINVSLOT);
+	thisclient->Equipment = new CItemManager(itemInfo, MAXEQSLOT);
+
 	thisclient->id = atoi(row[0]);
 	thisclient->username = row[1];
 	thisclient->accesslevel = atoi(row[3]);
@@ -756,55 +811,16 @@ PACKETHANDLER(pakUserLogin){
 	thisclient->clientid = thisclient->charid; // FIXME: Find a better way to do this.
 	thisclient->level = atoi(row[6]);
 	thisclient->profession = atoi(row[7]);
+	thisclient->gender = atoi(row[8]);
+	thisclient->hairstyle = atoi(row[10]);
+	thisclient->haircolor = atoi(row[11]);
+	thisclient->facestyle = atoi(row[12]);
 
 	thisclient->curX = thisclient->newX = 3257;
 	thisclient->curY = thisclient->newY = 9502;
 	
-	thisclient->inventoryCount= 0;
-	memset(&thisclient->inventory, 0, sizeof(thisclient->inventory));
-	for (int i= 0; i < atoi(row[13]);)
-	{
-		byte size= row[14][i] + 1;
-		ItemNode *node= (ItemNode *)malloc(size);
-		memcpy(node, row[14]+i, size);
-		thisclient->inventory[node->Pos]= node;
-		i+= size;
-		thisclient->inventoryCount+= 1;
-	}
-	thisclient->equipmentCount= 0;
-	memset(&thisclient->equipment, 0, sizeof(thisclient->equipment));
-	for (int i= 0; i < atoi(row[15]);)
-	{
-		byte size= row[16][i] + 1;
-		ItemNode *node= (ItemNode *)malloc(size);
-		memcpy(node, row[16]+i, size);
-		thisclient->equipment[node->Pos]= node;
-		i+= size;
-		thisclient->equipmentCount+= 1;
-	}
-	
-	//Lets add an item for testing:
-	//ItemNode *node= (ItemNode *)malloc(3 + sizeof(ItemWeapon));
-	//node->Size= 2 + sizeof(ItemWeapon);
-	//node->Flags= 0x09 << 2;
-	//node->Pos= 5;
-	//ItemWeapon *wep= (ItemWeapon *)&node->Item;
-	//memset(wep, 0, sizeof(ItemWeapon));
-	//wep->id= 250;
-	//wep->refine= 5;
-	//
-	//wep->statBonisCount= 2<<1|true;
-	//wep->statBonis[0].type= 0;
-	//wep->statBonis[0].value= 5;
-	//wep->statBonis[1].type= 1;
-	//wep->statBonis[1].value= 3;
-
-	//wep->titles[0].monsterId= 2;
-	//wep->titles[0].kills= 3;
-	//strcpy_s(wep->creator, 0x11, "MaxOff");
-	//
-	//thisclient->Inventory.Insert(node);
-	//Item added
+	thisclient->Inventory->LoadItemDump((byte*)row[13]);
+	thisclient->Equipment->LoadItemDump((byte*)row[14]);
 
 	if(thisclient->accesslevel < 1){
 		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
@@ -898,59 +914,21 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Inventory
 		CPacket pakout(0x1047);
-			pakout << byte(thisclient->inventoryCount); // Count
-			pakout << byte(0x09); // Type
-			int i= 0, c= 0;
-			for (; (c < thisclient->inventoryCount) && (i < InventorySize); i++)
-			{
-				if (thisclient->inventory[i] == NULL) continue;
-				else c+= 1;
-				pakout.AddBytes(thisclient->inventory[i], thisclient->inventory[i]->Size +1);
-			}
+		word DumpSize = 0;
+		byte* ItemDump = thisclient->Inventory->DumpItems(DumpSize);
+		pakout.AddBytes(ItemDump, DumpSize);
+		thisclient->Inventory->FreeDump(ItemDump);
 		SendPacket(thisclient, &pakout);
 	}
 
 	{	// Equips
 		
 		CPacket pakout(0x1047);
-			pakout << byte(thisclient->equipmentCount); // Count
-			pakout << byte(0x08); // Type
-			
-			for (int i= 0, c= 0; (c < thisclient->equipmentCount) && (i < EquipmentSize); i++)
-			{
-				if (thisclient->equipment[i] == NULL) continue;
-				else c+= 1;
-				pakout.AddBytes(thisclient->equipment[i], thisclient->equipment[i]->Size +1);
-			}
+		word DumpSize = 0;
+		byte* ItemDump = thisclient->Equipment->DumpItems(DumpSize);
+		pakout.AddBytes(ItemDump, DumpSize);
+		thisclient->Equipment->FreeDump(ItemDump);
 		SendPacket(thisclient, &pakout);
-
-		//CPacket pakout(0x1047);
-		//	pakout << byte(0x01); // Count
-		//	pakout << byte(0x08); // Type
-
-		//{
-		//	pakout.Add<byte>(0x34); // Size
-		//	pakout.Add<byte>(0x01); // Slot
-		//	pakout.Add<byte>(0x08 << 2); // State?
-		//	pakout.Add<word>(0x2CFF); // ItemID
-		//	pakout.Add<byte>(6); // Refine
-		//	pakout.Add<word>(0x00); // Unknown
-		//	pakout.Add<word>(0x0001); // Title1
-		//	pakout.Add<dword>(0x24); // Kills1
-		//	pakout.Add<word>(0xFFFF); // Title2
-		//	pakout.Add<dword>(0x00); // Kills2
-		//	pakout.Add<word>(0xFFFF); // Title3
-		//	pakout.Add<dword>(0x00); // Kills3
-		//	pakout.Add<word>(0x0000); // Unknown
-		//	pakout.AddFixLenStr("Drakia", 0x10); // Original Titler
-		//	pakout.Add<byte>(0x00);
-		//	pakout.Add<dword>(0x00); // Expire
-		//	pakout.Add<byte>(1 << 1 | 1); // Count << 1 | Visible
-		//	pakout.Add<byte>(0x00); // Str
-		//	pakout.Add<word>(0x10); // Value
-		//}
-
-		//SendPacket(thisclient, &pakout);
 	}
 
 	{	// House
@@ -1013,50 +991,6 @@ authFail:
 	return true;
 }
 
-ItemNode *CGameServer::CreatePlainItem( CTitanClient* baseclient, byte ilId, word itemId )
-{
-	CGameClient* thisclient = (CGameClient*)baseclient;
-	ItemNode **il;
-	int size; //amount of slots in item list
-	switch ( ilId ) 
-	{
-		case 8:
-			il= thisclient->equipment;
-			size= EquipmentSize;
-			thisclient->equipmentCount+= 1;
-			break;
-		case 9:
-			il= thisclient->inventory;
-			size= InventorySize;
-			thisclient->inventoryCount+= 1;
-		break;
-		default: return NULL;  //no such Inventory
-	}
-
-	int pos;
-	for (pos= 0; pos < size; pos++)
-		if ( il[pos] == NULL ) break;
-
-	int cl= itemInfo->GetDwordId( itemId, 4);
-	if (cl == 0 && itemInfo->GetDwordId( itemId, 0) == 0 )//double check cl==0
-		return false;
-
-	size= 3+ getItemSize((ItemClass)cl); //now size is the size of the node
-	if (size == 2)
-		return NULL; //ItemClass not yet implemented
-	
-	ItemNode *node= (ItemNode *)malloc(size);
-	memset(node, 0, size);
-	node->Size= size-1;
-	node->Pos= pos;
-	node->Flags= ilId << 2;
-	node->Item.id= itemId;
-
-	il[pos]= node;
-	
-	return node;
-}
-
 void CGameServer::ReceivedISCPacket( CISCPacket* pak ){
 	Log(MSG_INFO,"Received ISC Packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
 	switch(pak->Command()){
@@ -1070,4 +1004,29 @@ void CGameServer::ReceivedISCPacket( CISCPacket* pak ){
 		case TITAN_ISC_UPDATEUSERCNT:
 		break;
 	}
+}
+
+void CGameServer::OnClientDisconnect(CTitanClient* baseclient) {
+	CGameClient* thisclient = (CGameClient*)baseclient;
+	Log(MSG_INFO, "Saving Inventory");
+
+	word InvSize = 0;
+	word EquipSize = 0;
+	byte* InvDump = thisclient->Inventory->DumpItems(InvSize);
+	byte* EquipDump = thisclient->Equipment->DumpItems(EquipSize);
+
+	char* InvDump_Safe = db->MakeSQLSafe((string)InvDump, InvSize);
+	char* EquipDump_Safe = db->MakeSQLSafe((string)EquipDump, EquipSize);
+	db->ExecSQL("UPDATE `characters` SET `inventory` = '%s', `equipment` = '%s' WHERE `id` = %i", InvDump_Safe, EquipDump_Safe, thisclient->charid);
+
+	thisclient->Inventory->FreeDump(InvDump);
+	thisclient->Equipment->FreeDump(EquipDump);
+	free(InvDump_Safe);
+	free(EquipDump_Safe);
+
+	// Hide player entity.
+	CPacket pakout(0x1c0e);
+	pakout.Add<word>(thisclient->clientid);
+	for (word i = 0; i < ClientList.size(); i++)
+		SendPacket(ClientList.at(i), &pakout);
 }

@@ -21,8 +21,8 @@ CREATE TABLE `characters` (
   `hair` int(11) NOT NULL default '0',
   `haircolor` int(11) NOT NULL default '0',
   `face` int(11) NOT NULL default '0',
-  `equip` blob NOT NULL default '',
-  `inventory` blob NOT NULL default '',
+  `equipment` blob NOT NULL,
+  `inventory` blob NOT NULL,
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 

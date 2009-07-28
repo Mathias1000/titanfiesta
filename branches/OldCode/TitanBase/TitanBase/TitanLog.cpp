@@ -60,13 +60,11 @@ const void Log( LOG_TYPE flag, string format, ... ){
 	lConsole.unlock( );
 }
 
-const void LogPacket( CTitanPacket* pak )
+const void LogPacket( byte* pak, word size )
 {
-	Log(MSG_INFO,"LogPacket(): Command: 0x%08X Size: 0x%08X", pak->Command(), pak->Size());
-	dword cPos = pak->Pos();
-	pak->Pos(0);
-	for(dword i=0;i<pak->Size();i++)
-		printf("%02X ", pak->Read<byte>());
-	pak->Pos(cPos);
+	boost::mutex::scoped_lock lConsole( mConsole );
+	for(dword i = 0; i < size; i++)
+		printf("%02X ", pak[i]);
 	printf("\n");
+	lConsole.unlock( );
 }

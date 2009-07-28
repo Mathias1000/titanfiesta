@@ -1,6 +1,9 @@
 #define PACKETHANDLER(func) bool CCharServer::func( CCharClient* thisclient, CTitanPacket* pak )
 #define PACKETRECV(func) func(thisclient, pak)
 
+#include "..\Common\CShn.hpp"
+#include "..\Common\CItems.hpp"
+
 class CCharClient : public CTitanClient
 {	
 public:
@@ -10,6 +13,7 @@ public:
 			free(username);
 	}
 
+	CItemManager* Equipment;
 	dword xorTableLoc;
 	char username[0x13];
 	char charname[0x11];
@@ -109,6 +113,7 @@ public:
 	}
 
 private:
+	CShn* itemInfo;
 	std::vector<CServerData*> ServerList;
 	ReadWriteMutex rwmServerList;
 	CServerData ServerData;

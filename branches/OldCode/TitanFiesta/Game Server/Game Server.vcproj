@@ -182,10 +182,6 @@
 			<Filter
 				Name="Common"
 				>
-			<File
-					RelativePath="..\Common\CItems.cpp"
-				>
-			</File>
 		</Filter>
 		</Filter>
 		<Filter
@@ -202,10 +198,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CShn.hpp"
-				>
-			</File>
-			<File
 				RelativePath=".\main.h"
 				>
 			</File>
@@ -213,7 +205,7 @@
 				Name="Common"
 				>
 				<File
-					RelativePath="..\Common\CItems.h"
+					RelativePath="..\Common\CItems.hpp"
 					>
 				</File>
 				<File
@@ -222,6 +214,10 @@
 				</File>
 				<File
 					RelativePath="..\Common\Common.hpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Common\CShn.hpp"
 					>
 				</File>
 				<File

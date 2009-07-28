@@ -1,6 +1,6 @@
 #include "main.h"
 #include "CCharServer.hpp"
-#include "..\Common\CItems.h"
+#include "..\Common\CItems.hpp"
 
 bool CCharServer::OnServerReady(){
 	CTitanIniReader ini("CharServer.ini");
@@ -10,6 +10,12 @@ bool CCharServer::OnServerReady(){
 		 return false;
 	}else{
 		 Log(MSG_STATUS, "Connected to MYSQL Server");
+	}
+	
+	itemInfo = new CShn();
+	if(!itemInfo->Open("ItemInfo.shn", 0)){
+		Log(MSG_ERROR, "Could not open 'ItemInfo.shn'");
+		return false;
 	}
 	
 	ServerData.flags = 0;
@@ -180,7 +186,7 @@ PACKETHANDLER(pakSelectChar){
 
 	db->ExecSQL("UPDATE `users` SET `lastslot`=%d WHERE username='%s'", slot, thisclient->username);
 
-	MYSQL_RES* result = db->DoSQL("SELECT `charname` FROM `characters` WHERE `owner`='%s' AND `slot`=%d", thisclient->username, slot);
+	MYSQL_RES* result = db->DoSQL("SELECT `charname`, `equipment` FROM `characters` WHERE `owner`='%s' AND `slot`=%d", thisclient->username, slot);
 	if(!result){
 		Log(MSG_DEBUG, "SELECT returned bollocks");
 		return false;
@@ -198,6 +204,9 @@ PACKETHANDLER(pakSelectChar){
 	}
 	if(ServerList.size() > 1)
 		Log(MSG_ERROR, "More than one Game Server found, using first one");
+
+	// Set the equipment for this character. Not actually sure if this is needed anywhere.
+	thisclient->Equipment->LoadItemDump((byte*)row[1]);
 
 	CPacket pakout(0x1003);
 	pakout.AddFixLenStr(ServerList[0]->ip, 0x10);
@@ -225,15 +234,12 @@ PACKETHANDLER(pakDeleteChar){
 }
 
 PACKETHANDLER(pakCreateChar){
-	// Bah, James, you idiot, the slot # is sent with this packet :P Way to ignore it
-	// You also got haircolor and facestyle from 0x16 :P
 	// Ok, so, some odd behaviour. If you have 1 slot free, and try to create a char in it, client doesn't seem to get the packet.
 	char name[0x10];
-	memcpy(name, pak->Buffer() + 4, 0x10);
 	byte slot = pak->Get<byte>(0x03, 0);
-	byte isMale = ((pak->Get<byte>(0x14, 0) & 0x80) != 0);
+	memcpy(name, pak->Buffer() + 4, 0x10);
+	byte isMale = (pak->Get<byte>(0x14, 0) >> 7) & 0x01;
 	byte profession = (pak->Get<byte>(0x14, 0) >> 2) & 0x1F;
-	//byte profession = pak->Get<byte>(0x14, 0) & 0x7F;
 	byte unk = pak->Get<byte>(0x14, 0) & 0x03;
 	byte hairStyle = pak->Get<byte>(0x15, 0);
 	byte hairColour = pak->Get<byte>(0x16, 0);
@@ -245,18 +251,27 @@ PACKETHANDLER(pakCreateChar){
 
 	// Check 4 character limit
 	if (mysql_num_rows(result) >= 4) {
+		// Free memory
+		db->QFree(result);
+
 		 Log(MSG_DEBUG, "Character count is already >= 4, bad creation - %s", thisclient->username);
 		 return false;
 	}
 	db->QFree(result);
+	// Check SQLsafe name?
 	char* sqlSafeName = db->MakeSQLSafe(name);
 	if(_strcmpi(sqlSafeName, name) != 0){
 		 Log(MSG_DEBUG, "MySql Safe char create %s != %s", sqlSafeName, name);
+		 free(sqlSafeName);
 		 return false;
 	}
 	// Check if the character already exists
-	result = db->DoSQL("SELECT `charname` FROM `characters` WHERE `charname`='%s'", name);
+	result = db->DoSQL("SELECT `charname` FROM `characters` WHERE `charname`='%s'", sqlSafeName);
 	if(mysql_num_rows(result) > 0){
+		// Free memory
+		free(sqlSafeName);
+		db->QFree(result);
+
 		 Log(MSG_DEBUG, "Character already exists");
 
 		 CPacket pakout(0x1404);
@@ -267,27 +282,36 @@ PACKETHANDLER(pakCreateChar){
 		 return false;
 	}
 	db->QFree(result);
-	db->ExecSQL("INSERT INTO `characters` (`owner`,`charname`,`slot`,`profession`,`ismale`,`hair`,`haircolor`,`face`) values \
-			    ('%s', '%s', %u, %u, %u, %u, %u, %u)", thisclient->username, sqlSafeName, slot, profession, isMale, hairStyle, hairColour, faceStyle);
+
+	// Insert character into DB, send response packet.
+	db->ExecSQL("INSERT INTO `characters` (`owner`,`charname`,`slot`,`profession`,`ismale`,`hair`,`haircolor`,`face`,`equipment`,`inventory`) values \
+			    ('%s', '%s', %u, %u, %u, %u, %u, %u, 0x0008, 0x0009)", thisclient->username, sqlSafeName, slot, profession, isMale, hairStyle, hairColour, faceStyle);
 
 	free(sqlSafeName);
-
+	Log(MSG_DEBUG, "Created character with CharId: %d", db->LastInsertId());
 	CPacket pakout(0x1406);
 	pakout.Add<byte>(0x01); // # of chars
-	pakout.Add<dword>(0x0000); // Char ID
+	pakout.Add<dword>(db->LastInsertId()); // Char ID
 	pakout.AddFixLenStr(name, 0x10); // Name
 	pakout.Add<word>(0x01); // Level
 	pakout.Add<byte>(slot); // Slot
 	pakout.AddFixLenStr("Rou", 0x0D); // Map name
 	pakout.Add<dword>(0x00); // Unk
-	pakout.Add<byte>(profession | (isMale << 7)); // Job/Gender/Unk
+	pakout.Add<byte>(0x01 | profession << 2 | (isMale << 7)); // Job/Gender/Unk
 	pakout.Add<byte>(hairStyle); // Hair style
 	pakout.Add<byte>(hairColour); // Hair color
 	pakout.Add<byte>(faceStyle); // Face
-	pakout.Fill<byte>(0xFF, 0x26); // Equips (None)
+	pakout.Add<word>(0xffff); // Helmet
+	pakout.Add<word>(0xffff); // Weapon
+	pakout.Add<word>(0xffff); // Armor
+	pakout.Add<word>(0xffff); // Shield
+	pakout.Add<word>(0xffff); // Leg Armor
+	pakout.Add<word>(0xffff); // Boot
+	pakout.Fill<byte>(0xFF, 0x1A); // Equips (None)
+	pakout.Add<word>(0xffff); // Pet
 	pakout.Add<word>(0x00); // ??
 	pakout.Add<byte>(0xf0); // ??
-	pakout.Add<dword>(0xff); // ??
+	pakout.Add<dword>(0xffffffff); // ??
 	pakout.Fill<byte>(0x00, 0x0C); // ??
 	pakout.Add<dword>(0x00); // PosX
 	pakout.Add<dword>(0x00); // PosY
@@ -336,6 +360,12 @@ PACKETHANDLER(pakUserLogin){
 		 goto authFail;
 	}
 	db->QFree(result);
+	
+	thisclient->Equipment = new CItemManager(itemInfo, MAXEQSLOT);
+	if (thisclient->Equipment == NULL) {
+		Log(MSG_ERROR, "Error creating CItemManager Line: %d", __LINE__);
+		return false;
+	}
 	
 	SendCharList(thisclient);
 	return true;
@@ -389,26 +419,30 @@ void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
 
 void CCharServer::SendCharList(CCharClient* thisclient) {
 	// Select characters
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face`,length(`equip`),`equip` FROM `characters` WHERE `owner`='%s'", thisclient->username);
+	MYSQL_RES* result = db->DoSQL("SELECT `id`,`charname`,`level`,`slot`,`map`,`profession`,`ismale`,`hair`,`haircolor`,`face`,`equipment` FROM `characters` WHERE `owner`='%s'", thisclient->username);
 	if(!result){
 		 Log(MSG_DEBUG, "SELECT returned bollocks");
 		 return;
 	}
 	
 	MYSQL_ROW row;
-	word equipment[EquipmentSize];
 	CPacket pakout(0xC14);
 	pakout.Add<word>(*(word*)thisclient->loginid); // Unique ID
 	pakout.Add<byte>(mysql_num_rows(result)); // Num of chars
 	while (row = mysql_fetch_row(result)) {
-		memset(&equipment, -1, sizeof(equipment));
-		for (int i= 0; i < atoi(row[10]);)
-		{
-			byte size= row[11][i] + 1;
-			ItemNode *node= (ItemNode*)(row[11]+i);
-			equipment[node->Pos]= node->Item.id;
-			i+= size;
+
+		// Load inventory into a local variable for each character.
+		CItemManager Equipment(itemInfo, MAXEQSLOT);
+		Equipment.LoadItemDump((byte*)row[10]);
+		// Setup equipment array. This is so we don't have a shitton of ifs in the pak.
+		word EquipPak[MAXEQSLOT];
+		for (int i = 0; i < Equipment.GetSlotCount(); i++) {
+			if (Equipment.GetItem(i) != NULL)
+				EquipPak[i] = Equipment.GetItem(i)->Id;
+			else
+				EquipPak[i] = 0xffff;
 		}
+
 		pakout.Add<dword>(atoi(row[0])); // Character ID
 		 pakout.AddFixLenStr(row[1], 0x10); // Name
 		 pakout.Add<word>(atoi(row[2])); // Level
@@ -419,19 +453,15 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 		 pakout.Add<byte>(atoi(row[7]));//Hair Style
 		 pakout.Add<byte>(atoi(row[8]));//Hair Colour
 		 pakout.Add<byte>(atoi(row[9]));//Face Style
-		 // Wiping it to default armor for testing
-		 //in a nutshell its totaly unimportant in where we place them, but
-		 //just to be very we do it very same way the us server does it
-		 //Except: the ones that are ignored
-		 pakout.Add<word>(equipment[ 1]); //Helm [Not Shown]
-		 pakout.Add<word>(equipment[12]); //Weapon [Not Shown]
-		 pakout.Add<word>(equipment[ 7]); //Body Armour
-		 pakout.Add<word>(equipment[10]); //Shield [Not Shown]
-		 pakout.Add<word>(equipment[19]); //Pants
-		 pakout.Add<word>(equipment[21]); //Boots
+		pakout.Add<word>(EquipPak[1]); // Helmet (Hidden)
+		pakout.Add<word>(EquipPak[12]); // Weapon (Hidden)
+		pakout.Add<word>(EquipPak[7]); // Armor
+		pakout.Add<word>(EquipPak[10]); // Shield (Hidden)
+		pakout.Add<word>(EquipPak[19]); // Pants
+		pakout.Add<word>(EquipPak[21]); // Boots
 		 pakout.Fill<byte>(0xFF, 0x1A);
-		 pakout.Add<word>(equipment[28]); //Pet
-		 pakout.Add<word>(0x0); // 0x0060 on my main char
+		pakout.Add<word>(EquipPak[28]); // Pet
+		pakout.Add<word>(0x0000); // 0x0060 on my main char
 		 pakout.Add<byte>(0xf0);
 		 pakout.Add<dword>(0xffffffff);
 		 pakout.Fill<byte>(0x00, 12);

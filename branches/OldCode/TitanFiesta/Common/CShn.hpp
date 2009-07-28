@@ -1,3 +1,5 @@
+#pragma once
+
 #define ReadDword() dataRead<dword>(data, &readPos);
 #define ReadWord() dataRead<word>(data, &readPos);
 #define ReadByte() dataRead<byte>(data, &readPos);

@@ -109,6 +109,10 @@ public:
 		return (retval==0)?(mysql_affected_rows(&_MySql)):(0);
 	}
 
+	dword LastInsertId() {
+		return mysql_insert_id(&_MySql);
+	}
+
 	void QFree(MYSQL_RES*& result) {
 		if (result != NULL) {
 			mysql_free_result( result );

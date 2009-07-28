@@ -55,3 +55,4 @@ typedef enum
 
 const void SetConsoleColor( dword textcolor, dword backcolor = 0 );
 const void Log( LOG_TYPE flag, string format, ... );
+const void LogPacket( byte* pak, word size );

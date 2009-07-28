@@ -1,3 +1,5 @@
+#pragma once
+
 #define USASERVER 0
 #define EURSERVER 1
 
@@ -12,3 +14,9 @@ struct f_date {
 
 	f_date(){year=0;month=0;day=0;hour=0;minute=0;};
 };
+
+typedef unsigned __int8			byte;
+typedef unsigned __int16		word;
+typedef unsigned __int32		dword;
+typedef unsigned __int64		qword;
+typedef char*					string;
