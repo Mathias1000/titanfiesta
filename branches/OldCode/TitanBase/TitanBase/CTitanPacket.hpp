@@ -48,7 +48,7 @@ public:
 		_Size += strlen(val);
 	}
 
-	void AddBytes(void* val, dword len){
+	void AddBytes(byte* val, dword len){
 		memcpy(_Buffer + _Size, val, len);
 		_Size += len;
 	} 
@@ -82,7 +82,7 @@ public:
 		return true;
 	}
 
-#ifdef TITAN_USING_ISC
+#if defined(TITAN_USING_ISC) || defined(TITAN_IS_ISC_SERVER)
 	template <> void Add<CServerData*>(CServerData* srv){
 		Add<byte>(srv->type);
 		Add<word>(srv->iscid);
@@ -154,7 +154,7 @@ public:
 		return (*this);
 	}
 
-#ifdef TITAN_USING_ISC
+#if defined(TITAN_USING_ISC) || defined(TITAN_IS_ISC_SERVER)
 	template <> CTitanPacket& operator<<(CServerData* srv){
 		Add<byte>(srv->type);
 		Add<word>(srv->iscid);

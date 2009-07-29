@@ -24,9 +24,18 @@ bool CLoginServer::OnServerReady(){
 	ServerData.status = 0;
 	ServerData.type = 1;
 
+	// Get ISC Id.
+	{
 	CISCPacket pakout(TITAN_ISC_IDENTIFY);
 	pakout.Add<CServerData*>( &ServerData );
 	SendISCPacket( &pakout );
+	}
+
+	// Request serverlist.
+	{
+		CISCPacket pakout(TITAN_ISC_SERVERLIST);
+		SendISCPacket( &pakout );
+	}
 
 	return true;
 }
@@ -76,17 +85,20 @@ void CLoginServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak 
 }
 
 PACKETHANDLER(pakPing){
-	/*CPacket pakout(0xC1C);
-	pakout.AddFixLenStr("TitanFiesta", 0x12);
+	CPacket pakout(0xC1C);
 	rwmServerList.acquireReadLock();
 	pakout.Add<byte>(ServerList.size());
+	byte ServerCount = 0;
 	for(dword i = 0; i < ServerList.size(); i++){
+		if (ServerList[i]->type != 2) continue;
 		pakout.Add<byte>(ServerList[i]->id);
 		pakout.AddFixLenStr(ServerList[i]->name, 0x10);
 		pakout.Add<byte>(ServerList[i]->status);
+		ServerCount++;
 	}
+	pakout.Set<byte>(ServerCount, 0);
 	rwmServerList.releaseReadLock();
-	SendPacket(thisclient, &pakout);*/
+	SendPacket(thisclient, &pakout);
 	Log(MSG_DEBUG, "Client wants updates server status!");
 	return true;
 }
@@ -190,8 +202,8 @@ PACKETHANDLER(pakTokenLogin){
 	6 = low
 	7 = low
 	8 = low
-	9 = low
-	10 = medium
+	9 = medium
+	10 = high
 	*/
 	db->QFree(result);
 	return true;
@@ -303,13 +315,17 @@ authFail:
 	return true;
 }
 
-
 void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 	Log(MSG_INFO,"Received ISC Packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
 	switch(pak->Command()){
 		case TITAN_ISC_IDENTIFY:
 		{
 			CServerData* tempData = pak->Read<CServerData*>();
+			// Only accept char servers, no need to keep track of world server.
+			if (tempData->type != 2 || tempData->owner != ServerData.id) {
+				delete tempData;
+				break;
+			}
 			rwmServerList.acquireWriteLock();
 			ServerList.push_back( tempData );
 			rwmServerList.releaseWriteLock();
@@ -347,10 +363,39 @@ void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 				if(!dat) continue;
 				if(dat->iscid == iscid){ 
 					dat->currentusers = pak->Read<dword>();
+					// Status is 8-10 for low-high
+					if (dat->maxusers != 0)
+						dat->status = floor((double)(dat->currentusers / dat->maxusers) * 3) + 8;
 					break; 
 				}
 			}
 			rwmServerList.releaseWriteLock();			
+		}
+		break;
+		case TITAN_ISC_SERVERLIST:
+		{
+			byte ServerCount = pak->Read<byte>();
+			rwmServerList.acquireWriteLock();
+
+			// Clear serverlist.
+			for(std::vector<CServerData*>::iterator i = ServerList.begin(); i != ServerList.end(); i++) {
+				CServerData* s = *i;
+				ServerList.erase( i ); 
+				delete s; 
+			}
+			// Populate. Accept Char Servers owned by us.
+			Log(MSG_DEBUG, "Acquiring server list");
+			for (byte i = 0; i < ServerCount; i++) {
+				CServerData* s = pak->Read<CServerData*>();
+				if (s->type != 2 || s->owner != ServerData.id) {
+					delete s;
+					continue;
+				}
+				ServerList.push_back( s );
+				Log(MSG_DEBUG, "\t%s %s:%d [%d/%d]", s->name, s->ip, s->port, s->currentusers, s->maxusers);
+			}
+
+			rwmServerList.releaseWriteLock();
 		}
 		break;
 	}

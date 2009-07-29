@@ -27,10 +27,19 @@ bool CCharServer::OnServerReady(){
 	ServerData.port = Config.BindPort;
 	ServerData.status = 9;
 	ServerData.type = 2;
+	ServerData.maxusers = ini.GetInt("MaxUsers", "Char Server", 5);
 
+	// Identify with ISC
+	{
 	CISCPacket pakout(TITAN_ISC_IDENTIFY);
 	pakout.Add<CServerData*>( &ServerData );
 	SendISCPacket( &pakout );
+	}
+	// Fetch serverlist from ISC
+	{
+		CISCPacket pakout(TITAN_ISC_SERVERLIST);
+		SendISCPacket( &pakout );
+	}
 
 	return true;
 }
@@ -366,7 +375,14 @@ PACKETHANDLER(pakUserLogin){
 		Log(MSG_ERROR, "Error creating CItemManager Line: %d", __LINE__);
 		return false;
 	}
-	
+	{
+		// Update current user count
+		ServerData.currentusers++;
+		CISCPacket iscp(TITAN_ISC_UPDATEUSERCNT);
+		iscp.Add<word>(ServerData.iscid);
+		iscp.Add<dword>(ServerData.currentusers);
+		SendISCPacket(&iscp);
+	}
 	SendCharList(thisclient);
 	return true;
 authFail:
@@ -377,44 +393,6 @@ authFail:
 	}
 	db->QFree(result);
 	return true;
-}
-
-void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
-	Log(MSG_INFO,"Received ISC Packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
-	switch(pak->Command()){
-		 case TITAN_ISC_SETISCID:
-		 {
-			  ServerData.iscid = pak->Read<word>();
-		 }
-		 break;
-		 case TITAN_ISC_IDENTIFY:
-		 {			 
-			  CServerData* tempData = pak->Read<CServerData*>();
-			  if((tempData->type != 3) || (tempData->owner != ServerData.id)){
-				   delete tempData;
-				   return;
-			  }
-
-			  rwmServerList.acquireWriteLock();
-			  ServerList.push_back( tempData );
-			  rwmServerList.releaseWriteLock();
-			  Log(MSG_INFO,"Channel %s Connected with ISC ID %d", tempData->name, tempData->iscid);
-		 }
-		 break;
-		 case TITAN_ISC_REMOVE:
-		 {			 
-			  word iscid = pak->Read<word>();
-			  rwmServerList.acquireWriteLock( );
-			  for(std::vector<CServerData*>::iterator itvdata = ServerList.begin(); itvdata != ServerList.end(); itvdata++) {
-				   CServerData* dat = ((CServerData*)*itvdata);
-				   if(dat->iscid == iscid){ ServerList.erase(itvdata); delete dat; break; }
-			  }
-			  rwmServerList.releaseWriteLock( );
-		 }
-		 break;
-		 case TITAN_ISC_UPDATEUSERCNT:
-		 break;
-	}
 }
 
 void CCharServer::SendCharList(CCharClient* thisclient) {
@@ -434,14 +412,6 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 		// Load inventory into a local variable for each character.
 		CItemManager Equipment(itemInfo, MAXEQSLOT);
 		Equipment.LoadItemDump((byte*)row[10]);
-		// Setup equipment array. This is so we don't have a shitton of ifs in the pak.
-		word EquipPak[MAXEQSLOT];
-		for (int i = 0; i < Equipment.GetSlotCount(); i++) {
-			if (Equipment.GetItem(i) != NULL)
-				EquipPak[i] = Equipment.GetItem(i)->Id;
-			else
-				EquipPak[i] = 0xffff;
-		}
 
 		pakout.Add<dword>(atoi(row[0])); // Character ID
 		 pakout.AddFixLenStr(row[1], 0x10); // Name
@@ -453,20 +423,21 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 		 pakout.Add<byte>(atoi(row[7]));//Hair Style
 		 pakout.Add<byte>(atoi(row[8]));//Hair Colour
 		 pakout.Add<byte>(atoi(row[9]));//Face Style
-		pakout.Add<word>(EquipPak[1]); // Helmet (Hidden)
-		pakout.Add<word>(EquipPak[12]); // Weapon (Hidden)
-		pakout.Add<word>(EquipPak[7]); // Armor
-		pakout.Add<word>(EquipPak[10]); // Shield (Hidden)
-		pakout.Add<word>(EquipPak[19]); // Pants
-		pakout.Add<word>(EquipPak[21]); // Boots
+		pakout.Add<word>(Equipment.GetItemId(1)); // Helmet (Hidden)
+		pakout.Add<word>(Equipment.GetItemId(12)); // Weapon (Hidden)
+		pakout.Add<word>(Equipment.GetItemId(7)); // Armor
+		pakout.Add<word>(Equipment.GetItemId(10)); // Shield (Hidden)
+		pakout.Add<word>(Equipment.GetItemId(19)); // Pants
+		pakout.Add<word>(Equipment.GetItemId(21)); // Boots
 		 pakout.Fill<byte>(0xFF, 0x1A);
-		pakout.Add<word>(EquipPak[28]); // Pet
-		pakout.Add<word>(0x0000); // 0x0060 on my main char
-		 pakout.Add<byte>(0xf0);
+		pakout.Add<word>(Equipment.GetItemId(28)); // Pet
+		pakout.Add<byte>(0x00); // Weapon Refine << 4 | Shield Refine
+		pakout.Add<byte>(0x00); // Unknown
+		pakout.Add<byte>(0xf0); // Unknown
 		 pakout.Add<dword>(0xffffffff);
-		 pakout.Fill<byte>(0x00, 12);
-		 pakout.Add<dword>(0x0cdc); // Pos?
-		 pakout.Add<dword>(0x1bc9); // Pos?
+		pakout.Fill<byte>(0x00, 0x0c);
+		pakout.Add<dword>(0x0000); // Pos?
+		pakout.Add<dword>(0x0000); // Pos?
 		 pakout.Add<word>(0xdb78); // ?
 		 pakout.Add<word>(0xc315); // ?
 	}
@@ -488,4 +459,70 @@ CCharClient* CCharServer::GetClientByCharname(string charname) {
 		return c;
 	}
 	return NULL;
+}
+
+void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
+	Log(MSG_INFO,"Received ISC Packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
+	switch(pak->Command()){
+		 case TITAN_ISC_SETISCID:
+		 {
+			  ServerData.iscid = pak->Read<word>();
+		 }
+		 break;
+		 case TITAN_ISC_IDENTIFY:
+		 {
+			  CServerData* tempData = pak->Read<CServerData*>();
+			  if((tempData->type != 3) || (tempData->owner != ServerData.id)){
+				   delete tempData;
+				   return;
+			  }
+
+			  rwmServerList.acquireWriteLock();
+			  ServerList.push_back( tempData );
+			  rwmServerList.releaseWriteLock();
+			  Log(MSG_INFO,"Channel %s Connected with ISC ID %d", tempData->name, tempData->iscid);
+		 }
+		 break;
+		 case TITAN_ISC_REMOVE:
+		 {			 
+			  word iscid = pak->Read<word>();
+			  rwmServerList.acquireWriteLock( );
+			  for(std::vector<CServerData*>::iterator itvdata = ServerList.begin(); itvdata != ServerList.end(); itvdata++) {
+				   CServerData* dat = ((CServerData*)*itvdata);
+				   if(dat->iscid == iscid){ 
+					   ServerList.erase(itvdata); 
+					   delete dat; 
+					   break; 
+				   }
+			  }
+			  rwmServerList.releaseWriteLock( );
+		 }
+		 break;
+		 case TITAN_ISC_UPDATEUSERCNT: break;
+		case TITAN_ISC_SERVERLIST:
+		{
+			byte ServerCount = pak->Read<byte>();
+			rwmServerList.acquireWriteLock();
+
+			// Clear serverlist.
+			for(std::vector<CServerData*>::iterator i = ServerList.begin(); i != ServerList.end(); i++) {
+				CServerData* s = *i;
+				ServerList.erase( i ); 
+				delete s; 
+			}
+			// Populate. Only accept GameServer that is owned by us.
+			Log(MSG_DEBUG, "Acquiring server list");
+			for (byte i = 0; i < ServerCount; i++) {
+				CServerData* s = pak->Read<CServerData*>();
+				if((s->type != 3) || (s->owner != ServerData.id)) {
+					delete s;
+					continue;
+				}
+				ServerList.push_back( s );
+				Log(MSG_DEBUG, "\t%s %s:%d [%d/%d]", s->name, s->ip, s->port, s->currentusers, s->maxusers);
+			}
+
+			rwmServerList.releaseWriteLock();
+		}
+	}
 }

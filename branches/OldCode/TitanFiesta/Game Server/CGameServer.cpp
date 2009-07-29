@@ -28,27 +28,10 @@ bool CGameServer::OnServerReady(){
 	ServerData.status = 9;
 	ServerData.type = 3;
 
+	// Identify with ISC
 	CISCPacket pakout(TITAN_ISC_IDENTIFY);
 	pakout.Add<CServerData*>( &ServerData );
 	SendISCPacket( &pakout );
-/*
-	CItemManager Inventory(itemInfo, 96);
-	FILE* gh = fopen("Inventory.bin", "rb");
-	fseek(gh, 0, SEEK_END);
-	word size = ftell(gh);
-	fseek(gh, 0, SEEK_SET);
-	byte* buf = new byte[size];
-	fread(buf, size, 1, gh);
-	Inventory.LoadItems(buf);
-	delete[] buf;
-	fclose(gh);
-
-	word DumpSize = 0;
-	byte* ItemDump = Inventory.DumpItems(DumpSize);
-	FILE* fh = fopen("itemdump.bin", "wb");
-	fwrite(ItemDump, DumpSize, 1, fh);
-	fclose(fh);
-	Inventory.FreeDump(ItemDump);*/
 
 	return true;
 }
@@ -389,8 +372,16 @@ PACKETHANDLER(pakClientReady) {
 		pakident.Add<byte>(thisclient->hairstyle);
 		pakident.Add<byte>(thisclient->haircolor);
 		pakident.Add<byte>(thisclient->facestyle);
-		pakident.Fill<byte>(0xff, 0x28);
-		pakident.Add<byte>(0x00); // Refine
+		pakident.Add<word>(thisclient->Equipment->GetItemId(1)); // Helmet
+		pakident.Add<word>(thisclient->Equipment->GetItemId(12)); // Weapon
+		pakident.Add<word>(thisclient->Equipment->GetItemId(7)); // Armor
+		pakident.Add<word>(thisclient->Equipment->GetItemId(10)); // Shield
+		pakident.Add<word>(thisclient->Equipment->GetItemId(19)); // Pants
+		pakident.Add<word>(thisclient->Equipment->GetItemId(21)); // Boots
+		pakident.Fill<byte>(0xff, 0x1A);
+		pakident.Add<word>(thisclient->Equipment->GetItemId(28)); // Pet
+		pakident.Add<byte>(thisclient->Equipment->GetRefine(12) << 4 | 
+						   thisclient->Equipment->GetRefine(10)); // Refine
 		pakident.Add<word>(0x00);
 		pakident.Add<byte>(0x00);
 		pakident.Add<word>(0xffff);
@@ -419,7 +410,16 @@ PACKETHANDLER(pakClientReady) {
 		pakout.Add<byte>(c->hairstyle);
 		pakout.Add<byte>(c->haircolor);
 		pakout.Add<byte>(c->facestyle);
-		pakout.Fill<byte>(0xff, 0x28);
+		pakout.Add<word>(c->Equipment->GetItemId(1)); // Helmet
+		pakout.Add<word>(c->Equipment->GetItemId(12)); // Weapon
+		pakout.Add<word>(c->Equipment->GetItemId(7)); // Armor
+		pakout.Add<word>(c->Equipment->GetItemId(10)); // Shield
+		pakout.Add<word>(c->Equipment->GetItemId(19)); // Pants
+		pakout.Add<word>(c->Equipment->GetItemId(21)); // Boots
+		pakout.Fill<byte>(0xff, 0x1A);
+		pakout.Add<word>(c->Equipment->GetItemId(28)); // Pet
+		pakout.Add<byte>(c->Equipment->GetRefine(12) << 4 | 
+						 c->Equipment->GetRefine(10)); // Refine
 		pakout.Add<byte>(0x00); // Refine
 		pakout.Add<word>(0x00);
 		pakout.Add<byte>(0x00);
@@ -991,21 +991,6 @@ authFail:
 	return true;
 }
 
-void CGameServer::ReceivedISCPacket( CISCPacket* pak ){
-	Log(MSG_INFO,"Received ISC Packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
-	switch(pak->Command()){
-		case TITAN_ISC_SETISCID:
-		{
-			ServerData.iscid = pak->Read<word>();
-		}
-		break;
-		case TITAN_ISC_IDENTIFY:
-		case TITAN_ISC_REMOVE:
-		case TITAN_ISC_UPDATEUSERCNT:
-		break;
-	}
-}
-
 void CGameServer::OnClientDisconnect(CTitanClient* baseclient) {
 	CGameClient* thisclient = (CGameClient*)baseclient;
 	Log(MSG_INFO, "Saving Inventory");
@@ -1029,4 +1014,24 @@ void CGameServer::OnClientDisconnect(CTitanClient* baseclient) {
 	pakout.Add<word>(thisclient->clientid);
 	for (word i = 0; i < ClientList.size(); i++)
 		SendPacket(ClientList.at(i), &pakout);
+	
+	// Free memory used by inventory/equipment
+	delete thisclient->Inventory;
+	delete thisclient->Equipment;
+}
+
+void CGameServer::ReceivedISCPacket( CISCPacket* pak ){
+	Log(MSG_INFO,"Received ISC Packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
+	switch(pak->Command()){
+		case TITAN_ISC_SETISCID:
+		{
+			ServerData.iscid = pak->Read<word>();
+		}
+		break;
+		case TITAN_ISC_IDENTIFY:
+		case TITAN_ISC_REMOVE:
+		case TITAN_ISC_UPDATEUSERCNT:
+		case TITAN_ISC_SERVERLIST:
+		break;
+	}
 }

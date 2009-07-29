@@ -45,8 +45,8 @@ void CTitanISC::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak ){
 			SendPacket(thisclient, &pakout);
 		}
 		break;
-		case TITAN_ISC_SETISCID:
-		case TITAN_ISC_REMOVE:
+		case TITAN_ISC_SETISCID: break;
+		case TITAN_ISC_REMOVE: break;
 		case TITAN_ISC_UPDATEUSERCNT:
 		{
 			rwmServerList.acquireWriteLock();
@@ -59,6 +59,22 @@ void CTitanISC::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak ){
 				}
 			}
 			rwmServerList.releaseWriteLock();
+		}
+		break;
+		case TITAN_ISC_SERVERLIST:
+		{
+			CPacket pakout(TITAN_ISC_SERVERLIST);
+			rwmServerList.acquireReadLock();
+			pakout.Add<byte>(ServerList.size());
+
+			for (std::vector<CServerData*>::iterator i = ServerList.begin(); i != ServerList.end(); i++) {
+				CServerData* s = *i;
+				pakout.Add<CServerData*>(s);
+			}
+
+			rwmServerList.releaseReadLock();
+			SendPacket(thisclient, &pakout);
+			return; // We don't want to forward this packet.
 		}
 		break;
 		default:

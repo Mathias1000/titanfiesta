@@ -1,8 +1,8 @@
 #pragma once
 
 // 4 Tabs, 6x4 slots each.
-#define MAXINVSLOT 96
-#define MAXEQSLOT 28
+#define MAXINVSLOT 96 // (0 - 95)
+#define MAXEQSLOT 29 // (0 - 28)
 
 // Make our structs 1-byte packed. This way everything is properly aligned.
 #pragma pack (push, 1)
@@ -201,57 +201,57 @@ struct SItemCostumeWeapon : SItemBase {
 class CItemManager {
 public:
 	CItemManager(CShn* ItemInfo, byte SlotCount) {
-		this->_ItemInfo = ItemInfo;
-		this->_SlotCount = SlotCount;
-		this->_ItemCount = 0;
-		this->_DataLength = 0;
+		_ItemInfo = ItemInfo;
+		_SlotCount = SlotCount;
+		_ItemCount = 0;
+		_DataLength = 0;
 
-		this->_Items = new SItemBase*[SlotCount];
-		memset(this->_Items, 0, sizeof(SItemBase*) * SlotCount);
+		_Items = new SItemBase*[SlotCount];
+		memset(_Items, 0, sizeof(SItemBase*) * SlotCount);
 	};
 	~CItemManager() {
-		for (int i = 0; i < this->_SlotCount; i++) {
-			if (this->_Items[i] != NULL)
-				this->FreeItem(this->_Items[i]);
+		for (int i = 0; i < _SlotCount; i++) {
+			if (_Items[i] != NULL)
+				FreeItem(_Items[i]);
 		}
-		delete[] this->_Items;
+		delete[] _Items;
 	};
 
 	// Returns how many items were loaded.
 	byte LoadItemDump(byte* ItemBin) {
 		// Don't load in if there's already items.
-		if (this->_ItemCount > 0) return 0;
+		if (_ItemCount > 0) return 0;
 
 		byte* Pos = ItemBin;
-		this->_ItemCount = *Pos++;
-		this->_ItemType = *Pos++;
+		_ItemCount = *Pos++;
+		_ItemType = *Pos++;
 
-		for (int i = 0; i < this->_ItemCount; i++) {
+		for (int i = 0; i < _ItemCount; i++) {
 			byte ItemSize = *Pos++;
 			SItemBase* Item = (SItemBase*)new byte[ItemSize + 1];
 			memcpy((byte*)Item + 1, Pos, ItemSize);
 			Item->Length = ItemSize;
-			this->_Items[Item->Slot] = Item;
-			this->_DataLength += ItemSize + 1;
+			_Items[Item->Slot] = Item;
+			_DataLength += ItemSize + 1;
 			Pos += ItemSize;
 		}
-		return this->_ItemCount;
+		return _ItemCount;
 	};
 
 	// Dump item data to a binary blob. Sets &DataLength to size of blob.
 	byte* DumpItems(word &DataLength) {
-		byte* Buffer = new byte[this->_DataLength + 2];
+		byte* Buffer = new byte[_DataLength + 2];
 		byte* Pos = Buffer;
-		*Pos++ = this->_ItemCount;
-		*Pos++ = this->_ItemType;
-		DataLength = this->_DataLength + 2;
+		*Pos++ = _ItemCount;
+		*Pos++ = _ItemType;
+		DataLength = _DataLength + 2;
 		// If there are no items, we still return the count/type
-		if (this->_ItemCount == 0) return Buffer;
+		if (_ItemCount == 0) return Buffer;
 
-		for (int i = 0; i < this->_SlotCount; i++) {
-			if (this->_Items[i] == NULL) continue;
-			memcpy(Pos, this->_Items[i], this->_Items[i]->Length + 1);
-			Pos += this->_Items[i]->Length + 1;
+		for (int i = 0; i < _SlotCount; i++) {
+			if (_Items[i] == NULL) continue;
+			memcpy(Pos, _Items[i], _Items[i]->Length + 1);
+			Pos += _Items[i]->Length + 1;
 		}
 		return Buffer;
 	};
@@ -261,11 +261,11 @@ public:
 	}
 
 	SItemBase* CreateItem(word ItemId, byte ItemType, byte Stats) {
-		if (this->_ItemInfo == NULL) return NULL;
-		ItemClass Class = this->GetItemClass(ItemId);
+		if (_ItemInfo == NULL) return NULL;
+		ItemClass Class = GetItemClass(ItemId);
 		if (Class == ItemClassMax) return NULL;
 		// If Class == 0 it could be item not found. Check if ID == 0
-		if (!Class && !this->_ItemInfo->GetDwordId(ItemId, 0)) return NULL;
+		if (!Class && !_ItemInfo->GetDwordId(ItemId, 0)) return NULL;
 		int Size = GetItemSize(Class);
 		if (Size == -1) return NULL;
 
@@ -297,38 +297,44 @@ public:
 	};
 
 	bool SetItem(SItemBase* Item, byte Slot) {
-		if (Slot > this->_SlotCount || this->_Items[Slot] != NULL) return false;
-		this->_Items[Slot] = Item;
+		if (Slot > _SlotCount || _Items[Slot] != NULL) return false;
+		_Items[Slot] = Item;
 		Item->Slot = Slot;
-		Item->Type = this->_ItemType << 2;
-		this->_ItemCount++;
-		this->_DataLength += Item->Length + 1;
+		Item->Type = _ItemType << 2;
+		_ItemCount++;
+		_DataLength += Item->Length + 1;
 		return true;
 	}
 
 	SItemBase* GetItem(byte Slot) {
-		if (Slot > this->_SlotCount) return NULL;
-		return this->_Items[Slot];
+		if (Slot > _SlotCount) return NULL;
+		return _Items[Slot];
+	}
+
+	word GetItemId(byte Slot) {
+		// We return 0xffff if the item doesn't exist. It's how we handle null items in Fiesta.
+		if (Slot > _SlotCount || _Items[Slot] == NULL) return 0xffff;
+		return _Items[Slot]->Id;
 	}
 
 	bool RemoveItem(byte Slot, bool FreeMemory = true) {
-		if (Slot > this->_SlotCount || this->_Items[Slot] == NULL) return false;
+		if (Slot > _SlotCount || _Items[Slot] == NULL) return false;
 
-		this->_DataLength -= this->_Items[Slot]->Length + 1;
-		if (FreeMemory) FreeItem(this->_Items[Slot]);
-		this->_Items[Slot] = NULL;
-		this->_ItemCount--;
+		_DataLength -= _Items[Slot]->Length + 1;
+		if (FreeMemory) FreeItem(_Items[Slot]);
+		_Items[Slot] = NULL;
+		_ItemCount--;
 		return true;
 	}
 
 	bool SwapItems(byte SourceSlot, byte DestSlot) {
-		if (SourceSlot > this->_SlotCount || DestSlot > this->_SlotCount) return false;
+		if (SourceSlot > _SlotCount || DestSlot > _SlotCount) return false;
 
-		SItemBase* tmp = this->_Items[SourceSlot];
-		this->_Items[SourceSlot] = this->_Items[DestSlot];
-		this->_Items[DestSlot] = tmp;
-		if (this->_Items[SourceSlot]) this->_Items[SourceSlot]->Slot = SourceSlot;
-		if (this->_Items[DestSlot]) this->_Items[DestSlot]->Slot = DestSlot;
+		SItemBase* tmp = _Items[SourceSlot];
+		_Items[SourceSlot] = _Items[DestSlot];
+		_Items[DestSlot] = tmp;
+		if (_Items[SourceSlot]) _Items[SourceSlot]->Slot = SourceSlot;
+		if (_Items[DestSlot]) _Items[DestSlot]->Slot = DestSlot;
 		return true;
 	}
 
@@ -367,23 +373,34 @@ public:
 	};
 
 	ItemClass GetItemClass(word ItemId) {
-		if (this->_ItemInfo == NULL) return ItemClassMax;
-		return (ItemClass)this->_ItemInfo->GetDwordId(ItemId, 4);
+		if (_ItemInfo == NULL) return ItemClassMax;
+		return (ItemClass)_ItemInfo->GetDwordId(ItemId, 4);
 	}
 
 	word GetEquipSlot(word ItemId) {
-		if (this->_ItemInfo == NULL) return 0;
-		return this->_ItemInfo->GetDwordId(ItemId, 6);
+		if (_ItemInfo == NULL) return 0;
+		return _ItemInfo->GetDwordId(ItemId, 6);
 	}
 
-	byte GetItemCount() {return this->_ItemCount;};
-	byte GetSlotCount() {return this->_SlotCount;};
+	// Returns the refine of the weapon in slot Slot. 0 if empty slot.
+	// Does not check if the item is _actually_ refineable, just that there is
+	// data in the Refine position.
+	byte GetRefine(byte Slot) {
+		if (Slot > _SlotCount || _Items[Slot] == NULL) return 0;
+		if (_Items[Slot]->Length <= sizeof(SItemBase)) return 0;
+		// Fetch ->Count as that is the location of Refine on any refine-able item.
+		SItemRegular* Item = (SItemRegular*)_Items[Slot];
+		return Item->Count;
+	}
 
-	byte ItemType() {return this->_ItemType;};
-	void ItemType(byte Type) {this->_ItemType = Type;};
+	byte GetItemCount() {return _ItemCount;};
+	byte GetSlotCount() {return _SlotCount;};
+
+	byte ItemType() {return _ItemType;};
+	void ItemType(byte Type) {_ItemType = Type;};
 	int GetNextSlot() {
-		for (int i = 0; i < this->_SlotCount; i++) {
-			if (this->_Items[i] == NULL) return i;
+		for (int i = 0; i < _SlotCount; i++) {
+			if (_Items[i] == NULL) return i;
 		}
 		return -1;
 	}
