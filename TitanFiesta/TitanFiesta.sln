@@ -1,0 +1,56 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Login Server", "Login Server\Login Server.vcproj", "{EC4E1AA5-4357-4EE2-B475-E0A7F6BE258C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Fiesta Proxy", "Fiesta Proxy\Fiesta Proxy.vcproj", "{F7AB420C-BB64-4A56-85FB-A65A03181E6A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Char Server", "Char Server\Char Server.vcproj", "{0DA1F230-E087-4643-BB98-6FBBC6065945}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SHN Decrypter", "SHN Decrypter\SHN Decrypter.vcproj", "{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SHN Editor", "SHN Editor\SHN Editor.vcproj", "{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game Server", "Game Server\Game Server.vcproj", "{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TitanISC", "TitanISC\TitanISC.vcproj", "{86DABEBC-FFDF-4571-A89E-5B75642BC7A2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EC4E1AA5-4357-4EE2-B475-E0A7F6BE258C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EC4E1AA5-4357-4EE2-B475-E0A7F6BE258C}.Debug|Win32.Build.0 = Debug|Win32
+		{EC4E1AA5-4357-4EE2-B475-E0A7F6BE258C}.Release|Win32.ActiveCfg = Release|Win32
+		{EC4E1AA5-4357-4EE2-B475-E0A7F6BE258C}.Release|Win32.Build.0 = Release|Win32
+		{F7AB420C-BB64-4A56-85FB-A65A03181E6A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F7AB420C-BB64-4A56-85FB-A65A03181E6A}.Debug|Win32.Build.0 = Debug|Win32
+		{F7AB420C-BB64-4A56-85FB-A65A03181E6A}.Release|Win32.ActiveCfg = Release|Win32
+		{F7AB420C-BB64-4A56-85FB-A65A03181E6A}.Release|Win32.Build.0 = Release|Win32
+		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Debug|Win32.Build.0 = Debug|Win32
+		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Release|Win32.ActiveCfg = Release|Win32
+		{0DA1F230-E087-4643-BB98-6FBBC6065945}.Release|Win32.Build.0 = Release|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Debug|Win32.Build.0 = Debug|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Release|Win32.ActiveCfg = Release|Win32
+		{A3FA82DB-4FF2-43DD-9966-6CB1BB7866CA}.Release|Win32.Build.0 = Release|Win32
+		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Debug|Win32.Build.0 = Debug|Win32
+		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Release|Win32.ActiveCfg = Release|Win32
+		{A65DD2DE-2204-4B7F-8F39-9768BDA85BE2}.Release|Win32.Build.0 = Release|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Debug|Win32.Build.0 = Debug|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Release|Win32.ActiveCfg = Release|Win32
+		{1CD0185B-81FB-4C7E-929C-B65C8A559CB1}.Release|Win32.Build.0 = Release|Win32
+		{86DABEBC-FFDF-4571-A89E-5B75642BC7A2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{86DABEBC-FFDF-4571-A89E-5B75642BC7A2}.Debug|Win32.Build.0 = Debug|Win32
+		{86DABEBC-FFDF-4571-A89E-5B75642BC7A2}.Release|Win32.ActiveCfg = Release|Win32
+		{86DABEBC-FFDF-4571-A89E-5B75642BC7A2}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
