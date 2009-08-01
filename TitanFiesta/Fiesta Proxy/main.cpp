@@ -1,173 +1,82 @@
 #include "main.h"
 
-CConnection* loginServer;
-CConnection* charServer;
-CConnection* worldServer;
-CURL *curl;
+CListener listener;
 
-char charServerIP[32];
-char worldServerIP[32];
-word worldServerPort;
+bool ReceivedLoginServerPacket(CPacket* pak, CConnectClient* login){
+	switch(pak->command){
+		case 0x0C0C:
+			listener.SetWorldIP(pak->Get<char*>(0x04));
+			listener.SetWorldPort(pak->Get<word>(0x14));
 
-DWORD WINAPI loginServerThread(LPVOID lpParam){
-	loginServer->ServerThread();
-	return 0;
+			pak->Set(FixLenStr("127.0.0.1", 0x10), 0x04);
+			pak->Set<word>(9110, 0x14);
+		break;
+}
+	return true;
 }
 
-DWORD WINAPI charServerThread(LPVOID lpParam){
-	charServer->ServerThread();
-	return 0;
-}
+bool ReceivedWorldServerPacket(CPacket* pak, CConnectClient* world){
+	switch(pak->command){
+		case 0x1003:
+			listener.SetGameIP(pak->Get<char*>(0x03));
+			listener.SetGamePort(pak->Get<word>(0x13));
 
-DWORD WINAPI worldServerThread(LPVOID lpParam){
-	worldServer->ServerThread();
-	return 0;
-}
-
-DWORD WINAPI charServerWaitThread(LPVOID lpParam){
-	charServer = new CConnection("[Char]");
-	if(!charServer->WaitConnection("127.0.0.1", 9110)){
-		printf("Couldnt wait for char server conections! :(\n");
+			pak->Set(FixLenStr("127.0.0.1", 0x10), 0x03);
+			pak->Set<word>(9210, 0x13);
+		break;
 	}
-	return 0;
+	return true;
 }
 
-DWORD WINAPI worldServerWaitThread(LPVOID lpParam){
-	worldServer = new CConnection("[Game]");
-	if(!worldServer->WaitConnection("127.0.0.1", worldServerPort)){
-		printf("Couldnt wait for game server conections! :(\n");
-		return 0;
+bool ReceivedGameServerPacket(CPacket* pak, CConnectClient* game){
+	switch(pak->command){
+		case 0x180A:
+			listener.SetGameIP(pak->Get<char*>(0x0D));
+			listener.SetGamePort(pak->Get<word>(0x1D));
+
+			pak->Set(FixLenStr("127.0.0.1", 0x10), 0x0D);
+			pak->Set<word>(9210, 0x1D);
+		break;
 	}
-
-	if(!worldServer->Connect(worldServerIP, worldServerPort, 0)){
-		printf("Couldnt connect to game server! :(\n");
-		return 0;
-	}
-
-	CreateThread( NULL, 0, worldServerThread, NULL, 0, NULL);
-	worldServer->ClientThread();
-	return 0;
+	return true;
 }
 
-void StartCharServer(){
-	CreateThread( NULL, 0, charServerWaitThread, NULL, 0, NULL);
+bool ReceivedLoginClientPacket(CPacket* pak, CConnectClient* login){
+	return true;
 }
 
-void StartWorldServer(){
-	CreateThread( NULL, 0, worldServerWaitThread, NULL, 0, NULL);
+bool ReceivedWorldClientPacket(CPacket* pak, CConnectClient* world){
+	return true;
 }
 
-struct MemoryStruct {
-  char *memory;
-  size_t size;
-};
-
-void *myrealloc(void *ptr, size_t size){
-  if(ptr)
-    return realloc(ptr, size);
-  else
-    return malloc(size);
-}
-
-size_t WriteMemoryCallback(void *ptr, size_t size, size_t nmemb, void *data){
-  size_t realsize = size * nmemb;
-  struct MemoryStruct *mem = (struct MemoryStruct *)data;
-
-  mem->memory = (char *)myrealloc(mem->memory, mem->size + realsize + 1);
-  if(mem->memory) {
-    memcpy(&(mem->memory[mem->size]), ptr, realsize);
-    mem->size += realsize;
-    mem->memory[mem->size] = 0;
-  }
-  return realsize;
+bool ReceivedGameClientPacket(CPacket* pak, CConnectClient* game){
+	return true;
 }
 
 int main(int argc, char** argv){
-	if(argc < 3){
-		printf("%s <username> <md5 password>\n", argv[0]);
-		system("PAUSE");
+	if(argc < 4){
+		Log(MSG_ERROR, "%s <email> <password> <loginip>", argv[0]);
 		return 0;
 	}
 
-	SetConsoleTitleA("Fiesta Online Proxy - By ExJam");
+	char* email = argv[1];
+	char* password = argv[2];	
+	char* loginip = argv[3];
 
 	WORD sockVersion;
 	WSADATA wsaData;
 	sockVersion = MAKEWORD(1, 1);
 	WSAStartup(sockVersion, &wsaData);
 	
-	charServer = NULL;
+	CFiestaLauncher launcher;
+	launcher.Launch(email, password);
 	
-	curl_global_init(CURL_GLOBAL_ALL);
-  curl = curl_easy_init();
-	
-	struct MemoryStruct chunk;
-	chunk.memory = NULL;
-	chunk.size = 0;
-
-	char url[256];
-	sprintf_s(url, 256, "http://rest.outspark.net/user/v1/login?realm=fiesta&user=%s&password=%s&version=98&output=text", argv[1], argv[2]);
-	curl_easy_reset(curl);
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-	curl_easy_setopt(curl, CURLOPT_URL, url);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-	curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-	curl_easy_perform(curl);
-
-	if(strstr(chunk.memory, "token") == NULL){
-		printf("Invalid token login!\n");
-		printf("%s", chunk.memory);
-		system("PAUSE");
-		goto finished;
+	if(!listener.Start(loginip, 9010)){
+		Log(MSG_ERROR, "Listener.Start() returned false!");
+		return 0;
 	}
 
-	printf("Starting game...\n");
-
-	{
-		char* pch = chunk.memory + strlen("{\"token\":\"");
-		char* pch2 = strchr(pch, '"'); *pch2 = 0;
-		char token[64];
-		strcpy_s(token, 64, pch);
-		STARTUPINFO si = { sizeof( si ) };
-		PROCESS_INFORMATION pi;
-		char commandLine[256];
-		sprintf_s(commandLine, 256, "Fiesta.exe -t %s -i 127.0.0.1 -u http://store.outspark.com/game/fiesta", token);
-		CreateProcessA( 0, commandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi );
-	}
-
-	if(chunk.memory) free(chunk.memory);
-
-	printf("Waiting for connection...\n");
-	
-	loginServer = new CConnection("[Login]");
-	if(!loginServer->WaitConnection("127.0.0.1", 9010)){
-		printf("Couldnt wait for login conections! :(\n");
-		goto finished;
-	}
-
-	if(!loginServer->Connect("64.127.118.7", 9010, 0)){
-		printf("Couldnt connect to login server! :(\n");
-		goto finished;
-	}
-
-	CreateThread( NULL, 0, loginServerThread, NULL, 0, NULL);
-	loginServer->ClientThread();
-
-	delete loginServer;
-
-	if(charServer == NULL) goto finished;
-
-	if(!charServer->Connect(charServerIP, 9110, 0)){
-		printf("Couldnt connect to char server! :(\n");
-		goto finished;
-	}
-
-	CreateThread( NULL, 0, charServerThread, NULL, 0, NULL);
-	charServer->ClientThread();
-
-	Sleep(1000);
-finished:
 	WSACleanup();
-  curl_easy_cleanup(curl);
+
 	return 0;
 }
