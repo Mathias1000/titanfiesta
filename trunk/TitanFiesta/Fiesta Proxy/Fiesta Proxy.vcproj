@@ -186,15 +186,27 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CFiestaCrypt.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CFiestaLauncher.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CListener.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CPacket.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\main.h"
+				RelativePath=".\Log.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\XorTable.h"
+				RelativePath=".\main.h"
 				>
 			</File>
 		</Filter>

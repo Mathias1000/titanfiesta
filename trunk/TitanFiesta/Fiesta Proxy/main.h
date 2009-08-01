@@ -1,21 +1,31 @@
+#include <iostream>
 #include <winsock.h>
-#include <curl/curl.h>
+#include <boost/bind.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
+
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "libcurl.lib")
 
 typedef unsigned __int8 byte;
 typedef unsigned __int16 word;
 typedef unsigned __int32 dword;
 typedef unsigned __int64 qword;
 
-#include "XorTable.h"
+class CConnectClient;
+class CPacket;
 
-extern char charServerIP[32];
-extern char worldServerIP[32];
-extern word worldServerPort;
+bool ReceivedLoginServerPacket(CPacket* pak, CConnectClient* login);
+bool ReceivedWorldServerPacket(CPacket* pak, CConnectClient* world);
+bool ReceivedGameServerPacket(CPacket* pak, CConnectClient* game);
 
-#include <iostream>
+bool ReceivedLoginClientPacket(CPacket* pak, CConnectClient* login);
+bool ReceivedWorldClientPacket(CPacket* pak, CConnectClient* world);
+bool ReceivedGameClientPacket(CPacket* pak, CConnectClient* game);
+
+bool HandleCommand(CPacket* pak, char* command, CConnectClient* game);
+
 #include "CPacket.hpp"
-void StartCharServer();
-void StartWorldServer();
-#include "CConnection.hpp"
+#include "Log.hpp"
+#include "CFiestaCrypt.hpp"
+#include "CFiestaLauncher.hpp"
+#include "CListener.hpp"

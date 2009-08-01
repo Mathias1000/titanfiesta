@@ -1,30 +1,65 @@
+struct FixLenStr {
+	FixLenStr(char* str, int len):_str(str),_len(len){}
+	char* _str;
+	int _len;
+};
+
 class CPacket
 {
 public:
-	CPacket():size(0),command(0){buffer = NULL;}
-	CPacket(char* nBuf):size(0),command(0){buffer = nBuf;}
+	CPacket(char* nBuf, dword nLen){
+		buffer = reinterpret_cast<byte*>(nBuf);
+		size = nLen;
+		GetFromBuffer();
+	}
+	CPacket(word command, byte* buffer){
+		size = 3;
+		pos = 3;
+		this->command = command;
+		this->buffer = buffer;
+		SetBuffer();
+	}
 	~CPacket(){}
 
-	void CreatePacket(dword command){
-		size = 1;
-		pos = 1;
+	void ResetPacket(word command){
+		size = 3;
+		pos = 3;
 		this->command = command;
+		SetBuffer();
 	}
 
-	void DecryptPacket(){
-		size = *reinterpret_cast<byte*>(buffer);
-		//command = *reinterpret_cast<dword*>(buffer + 2);
-		pos = 1;
+	void GetFromBuffer(){
+		if(buffer[0] != 0){
+			command = *reinterpret_cast<word*>(buffer + 1);
+			pos = 3;
+		}else{
+			command = *reinterpret_cast<word*>(buffer + 3);
+			pos = 5;
+		}
 	}
 
-	void EncryptPacket(){
-		//*reinterpret_cast<byte*>(buffer) = size - 1;
-		//*reinterpret_cast<word*>(buffer + 2) = command;
+	void SetBuffer(){
+		Set<byte>(size - 1, 0);
+		Set<word>(command, 1);
+	}
+
+	template <class T> T Get(int pos){
+		return *reinterpret_cast<T*>(buffer + pos);
+	}
+
+	template <> char* Get<char*>(int pos){
+		return reinterpret_cast<char*>(buffer + pos);
 	}
 
 	template <class T> T Read(){
 		pos += sizeof(T);
 		return *reinterpret_cast<T*>(buffer + pos - sizeof(T));
+	}
+
+	template <> char* Read<char*>(){
+		char* tmp = reinterpret_cast<char*>(buffer + pos);
+		pos += strlen(tmp);
+		return tmp;
 	}
 
 	template <class T> void Add(T val){
@@ -33,16 +68,23 @@ public:
 		size += sizeof(T);
 	}
 
-	void AddString(char* str){
-		for(dword i = 0; i < strlen(str); i++)
-			Add<char>(str[i]);
-		//Add<char>(0);
+	template <class T> void Set(T val, int pos){
+		*reinterpret_cast<T*>(buffer + pos) = val;
 	}
+
+	template <> void Set<FixLenStr>(FixLenStr val, int pos){
+		int valLen = strlen(val._str);
+		if(valLen >= val._len){
+			memcpy(buffer + pos, val._str, val._len);
+			return;
+	}
+		memcpy(buffer + pos, val._str, valLen);
+		memset(buffer + pos + valLen, 0, val._len - valLen);
+	}
+
 
 	word size;
 	word command;
-	char* buffer;
-
-protected:
+	byte* buffer;
 	dword pos;
 };
