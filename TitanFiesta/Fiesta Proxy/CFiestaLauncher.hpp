@@ -1,3 +1,7 @@
+/* Copyright (C) 2008, 2009 TitanFiesta Dev Team
+ * Licensed under GNU GPL v3
+ * For license details, see LICENCE in the root folder. */
+
 #pragma once
 #include <curl/curl.h>
 #pragma comment(lib, "libcurl.lib")

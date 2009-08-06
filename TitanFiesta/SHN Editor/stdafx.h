@@ -1,3 +1,7 @@
+/* Copyright (C) 2008, 2009 TitanFiesta Dev Team
+ * Licensed under GNU GPL v3
+ * For license details, see LICENCE in the root folder. */
+
 
 // stdafx.h : include file for standard system include files,
 // or project specific include files that are used frequently,

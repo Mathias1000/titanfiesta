@@ -1,3 +1,7 @@
+/* Copyright (C) 2008, 2009 TitanFiesta Dev Team
+ * Licensed under GNU GPL v3
+ * For license details, see LICENCE in the root folder. */
+
 #define PACKETHANDLER(func) bool CLoginServer::func( CLoginClient* thisclient, CTitanPacket* pak )
 #define PACKETRECV(func) func(thisclient, pak)
 

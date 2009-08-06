@@ -1,3 +1,7 @@
+/* Copyright (C) 2008, 2009 TitanFiesta Dev Team
+ * Licensed under GNU GPL v3
+ * For license details, see LICENCE in the root folder. */
+
 struct FixLenStr {
 	FixLenStr(char* str, int len):_str(str),_len(len){}
 	char* _str;

@@ -1,3 +1,7 @@
+/* Copyright (C) 2008, 2009 TitanFiesta Dev Team
+ * Licensed under GNU GPL v3
+ * For license details, see LICENCE in the root folder. */
+
 /* A 3D point for positions */
 const float epsilon = 0.001f;
 const double pi = 3.1415926535;
