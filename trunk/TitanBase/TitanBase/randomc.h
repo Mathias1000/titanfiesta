@@ -83,7 +83,7 @@
 ============
 * © 1997 - 2007 Agner Fog. All software in this library is published under the
 * GNU General Public License with the further restriction that it cannot be 
-* used for gambling applications. See licence.htm
+* used for gambling applications. See LICENSE in the root directory.
 *******************************************************************************/
 
 #ifndef RANDOMC_H
