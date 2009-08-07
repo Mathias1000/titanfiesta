@@ -511,9 +511,9 @@ void CCharServer::ReceivedISCPacket( CISCPacket* pak ){
 			// Clear serverlist.
 			for(std::vector<CServerData*>::iterator i = ServerList.begin(); i != ServerList.end(); i++) {
 				CServerData* s = *i;
-				ServerList.erase( i ); 
 				delete s; 
 			}
+			ServerList.clear();
 			// Populate. Only accept GameServer that is owned by us.
 			Log(MSG_DEBUG, "Acquiring server list");
 			for (byte i = 0; i < ServerCount; i++) {

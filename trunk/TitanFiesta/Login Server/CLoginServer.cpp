@@ -149,7 +149,6 @@ PACKETHANDLER(pakTokenLogin){
 	thisclient->username = db->MakeSQLSafe(username);
 	thisclient->password = _strdup(md5hash);
 
-	Log(MSG_DEBUG, "%s, %s", thisclient->username, thisclient->password);
 	if(_strcmpi(thisclient->username, username)){
 		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->username, username);
 		goto authFail;
@@ -384,9 +383,9 @@ void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 			// Clear serverlist.
 			for(std::vector<CServerData*>::iterator i = ServerList.begin(); i != ServerList.end(); i++) {
 				CServerData* s = *i;
-				ServerList.erase( i ); 
 				delete s; 
 			}
+			ServerList.clear();
 			// Populate. Accept Char Servers owned by us.
 			Log(MSG_DEBUG, "Acquiring server list");
 			for (byte i = 0; i < ServerCount; i++) {

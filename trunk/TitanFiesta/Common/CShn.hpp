@@ -53,33 +53,7 @@ public:
 
 		useIdMap = theIdMap;
 
-		data += 0x24;
-		filesize -= 0x24;
-		byte esp10 = data[filesize - 1];
-		byte dl;
-		dword eax = filesize;
-		for(long i = filesize - 1; i > 0; --i){
-			dl = data[i];
-			dl ^= (eax & 0xFF);
-			eax &= ~0xFF;
-			eax |= i & 0xFF;
-			data[i] = dl;
-			char tmp = eax & 0xff;
-			short tmp2 = tmp * 0x0b;
-			eax &= ~0xFFFF;
-			eax |= *reinterpret_cast<word*>(&tmp2);
-			dl = i & 0xff;
-			dl &= 0x0f;
-			dl += 0x55;
-			dl ^= eax & 0xFF;
-			dl ^= esp10;
-			dl ^= 0xaa;
-			eax &= ~0xFF;
-			eax |= dl & 0xFF;
-			esp10 = eax & 0xFF;
-		}
-		data -= 0x24;
-		filesize += 0x24;
+		Decrypt(data + 0x24, filesize - 0x24);
 
 		dword readPos = 0x28;
 		dword rowCount = ReadDword();
@@ -195,6 +169,18 @@ private:
 	template <typename T> inline T dataRead(byte* data, dword* position){
 		(*position) += sizeof(T);
 		return *reinterpret_cast<T*>(data + (*position) - sizeof(T));
+	}
+
+	unsigned char* Decrypt(unsigned char* data, long int filesize) {
+		byte key = filesize & 0xFF;
+
+		for(long int i = filesize - 1; i > 0; --i){
+			data[i] ^= key;
+			byte tmp1 = ( 0x0b * (byte)i );
+			byte tmp2 = ( i & 0x0f ) + 0x55;
+			key ^= (tmp1 ^ tmp2) ^ 0xaa;
+		}
+		return data;
 	}
 
 	std::vector<CShnColumn*> columns;
