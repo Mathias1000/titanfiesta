@@ -52,6 +52,17 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			case 0x0817:
 				Log(MSG_DEBUG, "0x0817 Hide Players");
 			break;
+			case 0x0c18:
+			{
+				byte Type = pak->Read<byte>();
+				if (Type == 1)
+					Log(MSG_DEBUG, "User is selecting a new character");
+				else if (Type == 0)
+					Log(MSG_DEBUG, "User is selecting a new server");
+				else
+					Log(MSG_DEBUG, "User is selecting to do %d", Type);
+			}
+			break;
 			case 0x1071:
 				Log(MSG_DEBUG, "0x1071 Quitting Game...");
 			break;
