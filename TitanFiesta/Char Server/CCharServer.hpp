@@ -88,6 +88,7 @@ public:
 	void ReceivedISCPacket( CISCPacket* pak );
 	void OnReceivePacket( CTitanClient* thisclient, CTitanPacket* pak );
 	void ProcessCommand( string command );
+	PACKETHANDLER(pakPickChar);
 	PACKETHANDLER(pakUserLogin);
 	PACKETHANDLER(pakCreateChar);
 	PACKETHANDLER(pakDeleteChar);

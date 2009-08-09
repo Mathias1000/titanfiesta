@@ -52,38 +52,45 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 	CCharClient* thisclient = (CCharClient*)baseclient;
 	Log(MSG_INFO,"Received packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
 
+	if(thisclient->id == -1){
+		if (pak->Command() == 0xC0F)
+			PACKETRECV(pakUserLogin);
+	} else {
 	switch(pak->Command()){
+			case 0x0c18:
+			{
+				byte Type = pak->Read<byte>();
+				if (Type == 1)
+					Log(MSG_DEBUG, "User is selecting a new character");
+				else if (Type == 0)
+					Log(MSG_DEBUG, "User is selecting a new server");
+				else
+					Log(MSG_DEBUG, "User is selecting to do %d", Type);
+			}
+			break;
+			case 0x0c1f:
+				PACKETRECV(pakPickChar);
+			break;
 		case 0x200c:
-			if (thisclient->id != -1)
 				PACKETRECV(pakWhisper);
 		break;
 		 case 0x7002:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pak7002);
 		 break;
 		 case 0x7004:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pak7004);
 		 break;
 		 case 0x700c:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pak700c);
 		 break;
 		 case 0x700e:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pak700e);
 		 break;
 		 case 0x700a:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pak700a);
 		 break;
 		 case 0x7c06:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pak7c06);
-		 break;
-		 case 0xC0F:
-			  if(thisclient->id == -1)
-				   PACKETRECV(pakUserLogin);
 		 break;
 		 case 0x80D:
 		 {
@@ -94,15 +101,12 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 		 }
 		 break;
 		 case 0x1401:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pakCreateChar);
 		 break;
 		 case 0x1407:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pakDeleteChar);
 		 break;
 		 case 0x1001:
-			  if(thisclient->id != -1)
 				   PACKETRECV(pakSelectChar);
 		 break;
 		 default:
@@ -113,6 +117,7 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 			  printf("\n");
 		 break;
 	}
+}
 }
 
 const static byte packet0826[130] = {
@@ -166,6 +171,13 @@ PACKETHANDLER(pak7c06) {
 	CPacket pakout(0x7c07);
 	pakout.Add<dword>(0x00000db1);
 	SendPacket(thisclient, &pakout);
+	return true;
+}
+
+PACKETHANDLER(pakPickChar) {
+	byte Type = pak->Read<byte>();
+	Log(MSG_DEBUG, "pakPickChar: Type = %d", Type);
+	SendCharList(thisclient);
 	return true;
 }
 
