@@ -94,12 +94,16 @@ public:
 	PACKETHANDLER(pakDeleteChar);
 	PACKETHANDLER(pakSelectChar);
 	PACKETHANDLER(pakWhisper);
-	PACKETHANDLER(pak7002);
-	PACKETHANDLER(pak7004);
 	PACKETHANDLER(pak700c);
-	PACKETHANDLER(pak700e);
 	PACKETHANDLER(pak700a);
 	PACKETHANDLER(pak7c06);
+
+	PACKETHANDLER(pakLoadQBEntries);
+	PACKETHANDLER(pakLoadQBState);
+	PACKETHANDLER(pakLoadShortcutKeys);
+	PACKETHANDLER(pakSaveQBEntries);
+	PACKETHANDLER(pakSaveQBState);
+	PACKETHANDLER(pakSaveShortcutKeys);
 
 	void SendCharList(CCharClient* thisclient);
 	CCharClient* GetClientByCharname(string charname);

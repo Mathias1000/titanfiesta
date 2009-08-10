@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <map>
+#include <vector>
+
 #define ReadDword() dataRead<dword>(data, &readPos);
 #define ReadWord() dataRead<word>(data, &readPos);
 #define ReadByte() dataRead<byte>(data, &readPos);
@@ -38,7 +41,28 @@ public:
 class CShn {
 public:
 	CShn(){}
-	~CShn(){}
+	~CShn(){
+		// Properly delete data.
+		for (dword i = 0; i < rows.size(); i++) {
+			for (dword j = 0; j < columns.size(); j++) {
+				// Free memory used in char arrays
+				if (columns[j]->type == 9 || columns[j]->type == 26) {
+					delete[] rows[i]->cells[j]->strData;
+					rows[i]->cells[j]->strData = NULL;
+				}
+			}
+			// Free memory used by row
+			delete rows[i];
+			rows[i] = NULL;
+		}
+		for (dword j = 0; j < columns.size(); j++) {
+			// Free memory used by column
+			delete columns[j];
+			columns[j] = NULL;
+		}
+		columns.clear();
+		rows.clear();
+	}
 
 	bool Open(char* path, int theIdMap = -1){
 		FILE* fh;
@@ -50,6 +74,12 @@ public:
 		byte* data = new byte[filesize];
 		fread(data, filesize, 1, fh);
 		fclose(fh);
+
+		// Apparently this tells you if it's an SHN
+		if (data[0x1C] != 0x01) {
+			delete[] data;
+			return false;
+		}
 
 		useIdMap = theIdMap;
 
@@ -163,6 +193,35 @@ public:
 	char* GetStringId(word id, dword column){
 		std::map<word, CShnRow*>::iterator cur = idMap.find(id);
 		return (cur == idMap.end())?0:cur->second->cells[column]->strData;
+	}
+
+	dword ColCount() {
+		return columns.size();
+	}
+
+	dword RowCount() {
+		return rows.size();
+	}
+
+	byte ColType(dword column) {
+		if (column < columns.size())
+			return columns[column]->type;
+		else
+			return 0;
+	}
+
+	CShnColumn* Column(dword column) {
+		if (column < columns.size())
+			return columns.at(column);
+		else
+			return NULL;
+	}
+
+	CShnRow* Row(dword row) {
+		if (row < rows.size())
+			return rows.at(row);
+		else
+			return NULL;
 	}
 
 private:

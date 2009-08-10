@@ -1,67 +1,100 @@
 /* Copyright (C) 2008, 2009 TitanFiesta Dev Team
  * Licensed under GNU GPL v3
  * For license details, see LICENCE in the root folder. */
+#pragma once
 
 #pragma pack(push)
 #pragma pack(1)
 struct CCharacter
 {
-	word clientid;
-	char charname[0x10];
+	dword Id;
+	word ClientId;
+	char Name[0x10];
+
+	// Player Stats
+	word Level;
+	qword Exp;
+	dword MaxHp;
+	dword MaxSp;
+	dword Hp;
+	dword Sp;
+	dword Fame;
+	qword Money;
+	byte StrBonus;
+	byte EndBonus;
+	byte DexBonus;
+	byte IntBonus;
+	byte SprBonus;
+	dword KillPoints;
+
+	// Map Information
+	char Map[0x0D];
 	struct {
-		dword y;
-		dword x;
-		byte rot;
-	} map;
-	byte unk1;
-	byte isvisible;
-	byte unknown : 2;
-	byte job : 5;
-	byte gender : 1;
-	byte hairstyle;
-	byte haircolor;
-	byte facestyle;
-/*
-	word helmet;
-	word weapon;
-	word armor;
-	word shield;
-	word pants;
-	word boots;
-	byte unkitems[0x1C];*/
+		dword Y;
+		dword X;
+		byte Rotation;
+	} Pos;
+	struct {
+		dword Y;
+		dword X;
+		byte Rotation;
+	} NewPos;
+
+	// View Information
+	byte State; // 0x01 = Normal / 0x03 = Dead / 0x04 = Resting / 0x05 = Shop / 0x06 = Mount
+	byte Icon; // Has to be same as Job?
 	union {
 		struct {
-			word helmet;
-			word weapon;
-			word armor;
-			word shield;
-			word pants;
-			word boots;
+	byte Unknown2 : 2;
+	byte Job : 5;
+	byte Gender : 1;
 		};
-		byte items[0x28];
+		byte Profession;
 	};
 	struct {
-		byte shield : 4;
-		byte weapon : 4;
-	} refine;
+		byte Style;
+		byte Color;
+	} Hair;
+	struct {
+		byte Style;
+	} Face;
+	union {
+		struct {
+			word Helmet;
+			word Weapon;
+			word Body;
+			word Shield;
+			word Pants;
+			word Boots;
+		};
+		word Items[0x14];
+	};
+	struct {
+		byte Shield : 4;
+		byte Weapon : 4;
+	} Refine;
 
-	word unk3;
-	byte unk4;
-	word unk5;
-	byte emote;
-	word unk6;
+	word Unknown3;
+	byte Unknown4;
+	word Unknown5;
+	byte Emote;
+	word Unknown6;
 	
 	struct {
-		byte id;
-		byte level;
-		word monsterid;
-	} title;
+		byte Id;
+		byte Level;
+		word MonsterId;
+	} Title;
 
-	byte buff[0x28];
-	dword guildid;
-	word unk7;
+	byte Buff[0x28];
+	dword GuildId;
+	word Unknown7;
 
-
-
+	CCharacter() {
+		// Initialize the entire struct as 0, except for items.
+		memset(this, 0, sizeof(CCharacter));
+		memset(Items, 0xff, sizeof(Items));
+		Unknown2 = 1; // Random job thing.
+	}
 };
 #pragma pack(pop)

@@ -23,6 +23,9 @@ CREATE TABLE `characters` (
   `face` int(11) NOT NULL default '0',
   `equipment` blob NOT NULL,
   `inventory` blob NOT NULL,
+  `quickbars` blob NOT NULL,
+  `quickbarstate` blob NOT NULL,
+  `shortcutkeys` blob NOT NULL,
   PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 

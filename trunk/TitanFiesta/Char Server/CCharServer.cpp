@@ -75,22 +75,22 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 				PACKETRECV(pakWhisper);
 		break;
 		 case 0x7002:
-				   PACKETRECV(pak7002);
+				PACKETRECV(pakLoadQBEntries);
 		 break;
 		 case 0x7004:
-				   PACKETRECV(pak7004);
+				PACKETRECV(pakLoadQBState);
 		 break;
 		 case 0x700c:
-				   PACKETRECV(pak700c);
+				PACKETRECV(pak700c);
 		 break;
 		 case 0x700e:
-				   PACKETRECV(pak700e);
+				PACKETRECV(pakLoadShortcutKeys);
 		 break;
 		 case 0x700a:
-				   PACKETRECV(pak700a);
+				PACKETRECV(pak700a);
 		 break;
 		 case 0x7c06:
-				   PACKETRECV(pak7c06);
+				PACKETRECV(pak7c06);
 		 break;
 		 case 0x80D:
 		 {
@@ -109,6 +109,18 @@ void CCharServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 		 case 0x1001:
 				   PACKETRECV(pakSelectChar);
 		 break;
+
+			 // Save client information
+			 case 0x7010: // Quickslot Entries
+				PACKETRECV(pakSaveQBEntries);
+			 break;
+			 case 0x7011: // Quickslot Placement
+				 PACKETRECV(pakSaveQBState);
+			 break;
+			 case 0x7016: // Shortcut Keys
+				 PACKETRECV(pakSaveShortcutKeys);
+			 break;
+
 		 default:
 			  pak->Pos(0);
 			  printf("Unhandled Packet, Command: %04x Size: %04x:\n", pak->Command(), pak->Size());
@@ -132,17 +144,33 @@ const static byte packet0826[130] = {
 		 0x20, 0xD5,
 };
 
-PACKETHANDLER(pak7002) {
+PACKETHANDLER(pakLoadQBEntries) {
+	// Fetch quickbars from DB
+	MYSQL_RES* result = db->DoSQL("SELECT `quickbars`, LENGTH(`quickbars`) FROM `characters` WHERE `charname` = '%s'", thisclient->charname);
+	MYSQL_ROW row = mysql_fetch_row(result);
+
+	// Send quickbars to user
 	CPacket pakout(0x7003);
-	pakout.AddFile("7003.pak");
+	pakout.Add<byte>(0x01); // Unknown
+	pakout.AddBytes((byte*)row[0], atoi(row[1]));
 	SendPacket(thisclient, &pakout);
+
+	db->QFree(result);
 	return true;
 }
 
-PACKETHANDLER(pak7004) {
+PACKETHANDLER(pakLoadQBState) {
+	// Fetch quickbarstate from DB
+	MYSQL_RES* result = db->DoSQL("SELECT `quickbarstate`, LENGTH(`quickbarstate`) FROM `characters` WHERE `charname` = '%s'", thisclient->charname);
+	MYSQL_ROW row = mysql_fetch_row(result);
+
+	// Send quickbarstate to user
 	CPacket pakout(0x7005);
-	pakout.AddFile("7005.pak");
+	pakout.Add<byte>(0x01); // Unknown
+	pakout.AddBytes((byte*)row[0], atoi(row[1]));
 	SendPacket(thisclient, &pakout);
+
+	db->QFree(result);
 	return true;
 }
 
@@ -153,10 +181,18 @@ PACKETHANDLER(pak700c) {
 	return true;
 }
 
-PACKETHANDLER(pak700e) {
+PACKETHANDLER(pakLoadShortcutKeys) {
+	// Fetch shortcutkeys from DB
+	MYSQL_RES* result = db->DoSQL("SELECT `shortcutkeys`, LENGTH(`shortcutkeys`) FROM `characters` WHERE `charname` = '%s'", thisclient->charname);
+	MYSQL_ROW row = mysql_fetch_row(result);
+
+	// Send shortcutkeys to user
 	CPacket pakout(0x700f);
-	pakout.AddFile("700f.pak");
+	pakout.Add<byte>(0x01); // Unknown
+	pakout.AddBytes((byte*)row[0], atoi(row[1]));
 	SendPacket(thisclient, &pakout);
+
+	db->QFree(result);
 	return true;
 }
 
@@ -186,11 +222,17 @@ PACKETHANDLER(pakWhisper) {
 	byte len = pak->Read<byte>();
 	char* message = (char*)pak->ReadBytes(len, true);
 	CCharClient* targetclient = GetClientByCharname(target);
-	delete[] target;
 
 	if (targetclient == NULL) {
+		// Inform client that the target doesn't exist
+		CPacket pakout(0x200e);
+		pakout.Add<word>(0x0f69);
+		pakout.AddBytes((byte*)target, 0x10);
+		SendPacket(thisclient, &pakout);
+		Log(MSG_DEBUG, "Invalid whisper target %s", target);
+		// Free resources.
+		delete[] target;
 		delete[] message;
-		Log(MSG_DEBUG, "Invalid whisper target");
 		return false;
 	}
 	pak->Set<word>(0x200f, 1, 0);
@@ -202,6 +244,8 @@ PACKETHANDLER(pakWhisper) {
 		pakout.Add<byte>(len);
 		pakout.AddBytes((byte*)message, len);
 	SendPacket(targetclient, &pakout);
+	// Free resources
+	delete[] target;
 	delete[] message;
 	return true;
 }
@@ -461,6 +505,30 @@ void CCharServer::SendCharList(CCharClient* thisclient) {
 	SendPacket(thisclient, &pakout);
 }
 
+PACKETHANDLER(pakSaveQBEntries) {
+	// Save the entire packet into the DB, easiest way to do it.
+	char* QBEntriesSafe = db->MakeSQLSafe((string)pak->Data(), pak->Size());
+	db->ExecSQL("UPDATE `characters` SET `quickbars` = '%s' WHERE `charname` = '%s'", QBEntriesSafe, thisclient->charname);
+	free(QBEntriesSafe);
+	return true;
+}
+
+PACKETHANDLER(pakSaveQBState) {
+	// Save the entire packet into the DB, easiest way to do it.
+	char* QBStateSafe = db->MakeSQLSafe((string)pak->Data(), pak->Size());
+	db->ExecSQL("UPDATE `characters` SET `quickbarstate` = '%s' WHERE `charname` = '%s'", QBStateSafe, thisclient->charname);
+	free(QBStateSafe);
+	return true;
+}
+
+PACKETHANDLER(pakSaveShortcutKeys) {
+	// Save the entire packet into the DB, easiest way to do it.
+	char* SKSafe = db->MakeSQLSafe((string)pak->Data(), pak->Size());
+	db->ExecSQL("UPDATE `characters` SET `shortcutkeys` = '%s' WHERE `charname` = '%s'", SKSafe, thisclient->charname);
+	free(SKSafe);
+	return true;
+}
+
 #ifdef TITAN_USING_CONSOLE_COMMANDS
 void CCharServer::ProcessCommand( string command ) {
 	printf("Command: %s\n", command);
@@ -471,7 +539,7 @@ CCharClient* CCharServer::GetClientByCharname(string charname) {
 	for (std::vector<CTitanClient*>::iterator i = ClientList.begin(); i != ClientList.end(); i++) {
 		CCharClient* c = (CCharClient*)*i;
 		if (c->lastslot == -1) continue;
-		if (strncmp(c->charname, charname, 0x10)) continue;
+		if (_strnicmp(c->charname, charname, 0x10)) continue;
 		return c;
 	}
 	return NULL;

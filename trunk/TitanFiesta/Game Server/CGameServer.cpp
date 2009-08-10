@@ -21,6 +21,11 @@ bool CGameServer::OnServerReady(){
 		Log(MSG_ERROR, "Could not open 'ItemInfo.shn'");
 		return false;
 	}
+	mapInfo = new CShn();
+	if (!mapInfo->Open("MapInfo.shn", 0)) {
+		Log(MSG_ERROR, "Could not open 'MapInfo.shn'");
+		return false;
+	}
 	
 	ServerData.flags = 0;
 	ServerData.id = ini.GetInt("Id","Game Server",3);
@@ -44,7 +49,7 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 	CGameClient* thisclient = (CGameClient*)baseclient;
 	Log(MSG_INFO,"Received packet: Command: %04x Size: %04x", pak->Command(), pak->Size());
 
-	if(thisclient->id == -1){
+	if(thisclient->Id == -1){
 		if(pak->Command() == 0x1801)
 			PACKETRECV(pakUserLogin);
 	}else{
@@ -134,7 +139,7 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 					who = "Brett";
 
 				char buffer[255];
-				sprintf_s(buffer, 255, "\"%s\" wants to have sex with %s!", thisclient->charname, who);
+				sprintf_s(buffer, 255, "\"%s\" wants to have sex with %s!", thisclient->Character.Name, who);
 				CPacket pakout(0x6402);
 				pakout << byte(11);
 				pakout.AddStringLen<byte>(buffer);
@@ -354,18 +359,20 @@ PACKETHANDLER(pakRest){
 }
 
 PACKETHANDLER(pakMove) {
-	thisclient->newY = pak->Read<dword>();
-	thisclient->newX = pak->Read<dword>();
-	thisclient->curY = pak->Read<dword>();
-	thisclient->curX = pak->Read<dword>();
-	Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", thisclient->newY, thisclient->newX, thisclient->curY, thisclient->curX);
+	thisclient->Character.NewPos.Y = pak->Read<dword>();
+	thisclient->Character.NewPos.X = pak->Read<dword>();
+	thisclient->Character.Pos.Y = pak->Read<dword>();
+	thisclient->Character.Pos.X = pak->Read<dword>();
+	Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", 
+		thisclient->Character.NewPos.Y, thisclient->Character.NewPos.X, 
+		thisclient->Character.Pos.Y, thisclient->Character.Pos.X);
 
 	CPacket pakout(0x201a);
-		pakout.Add<word>(thisclient->clientid);
-		pakout.Add<dword>(thisclient->newY);
-		pakout.Add<dword>(thisclient->newX);
-		pakout.Add<dword>(thisclient->curY);
-		pakout.Add<dword>(thisclient->curX);
+		pakout.Add<word>(thisclient->Character.ClientId);
+		pakout.Add<dword>(thisclient->Character.NewPos.Y);
+		pakout.Add<dword>(thisclient->Character.NewPos.X);
+		pakout.Add<dword>(thisclient->Character.Pos.Y);
+		pakout.Add<dword>(thisclient->Character.Pos.X);
 		pakout.Add<word>(0x68); // Speed?
 
 	for (dword i = 0; i < ClientList.size(); i++)
@@ -376,17 +383,17 @@ PACKETHANDLER(pakMove) {
 
 PACKETHANDLER(pakClientReady) {
 	CPacket pakident(0x1c06);
-		pakident.Add<word>(thisclient->clientid);
-		pakident.AddFixLenStr(thisclient->charname, 0x10);
-		pakident.Add<dword>(thisclient->curY);
-		pakident.Add<dword>(thisclient->curX);
+		pakident.Add<word>(thisclient->Character.ClientId);
+		pakident.AddFixLenStr(thisclient->Character.Name, 0x10);
+		pakident.Add<dword>(thisclient->Character.Pos.Y);
+		pakident.Add<dword>(thisclient->Character.Pos.X);
 		pakident.Add<byte>(0);
 		pakident.Add<byte>(0x01); // State
-		pakident.Add<byte>(thisclient->profession);
-		pakident.Add<byte>(thisclient->gender << 7 | thisclient->profession << 2 | 0x01);
-		pakident.Add<byte>(thisclient->hairstyle);
-		pakident.Add<byte>(thisclient->haircolor);
-		pakident.Add<byte>(thisclient->facestyle);
+		pakident.Add<byte>(thisclient->Character.Job);
+		pakident.Add<byte>(thisclient->Character.Profession);
+		pakident.Add<byte>(thisclient->Character.Hair.Style);
+		pakident.Add<byte>(thisclient->Character.Hair.Color);
+		pakident.Add<byte>(thisclient->Character.Face.Style);
 		pakident.Add<word>(thisclient->Equipment->GetItemId(1)); // Helmet
 		pakident.Add<word>(thisclient->Equipment->GetItemId(12)); // Weapon
 		pakident.Add<word>(thisclient->Equipment->GetItemId(7)); // Armor
@@ -400,7 +407,7 @@ PACKETHANDLER(pakClientReady) {
 		pakident.Add<word>(0x00);
 		pakident.Add<byte>(0x00);
 		pakident.Add<word>(0xffff);
-		pakident.Add<byte>(thisclient->emote);
+		pakident.Add<byte>(thisclient->Character.Emote);
 		pakident.Add<word>(0xffff);
 		pakident.Add<byte>(0);
 		pakident.Add<byte>(0);
@@ -414,17 +421,17 @@ PACKETHANDLER(pakClientReady) {
 		CGameClient* c = (CGameClient*)ClientList.at(i);
 		if (c == NULL) continue;
 		CPacket pakout(0x1c06);
-		pakout.Add<word>(c->clientid);
-		pakout.AddFixLenStr(c->charname, 0x10);
-		pakout.Add<dword>(c->curY);
-		pakout.Add<dword>(c->curX);
+		pakout.Add<word>(c->Character.ClientId);
+		pakout.AddFixLenStr(c->Character.Name, 0x10);
+		pakout.Add<dword>(c->Character.Pos.Y);
+		pakout.Add<dword>(c->Character.Pos.X);
 		pakout.Add<byte>(0);
 		pakout.Add<byte>(0x01); // State
-		pakout.Add<byte>(c->profession);
-		pakout.Add<byte>(c->gender << 7 | c->profession << 2 | 0x01);
-		pakout.Add<byte>(c->hairstyle);
-		pakout.Add<byte>(c->haircolor);
-		pakout.Add<byte>(c->facestyle);
+		pakout.Add<byte>(c->Character.Job);
+		pakout.Add<byte>(c->Character.Profession);
+		pakout.Add<byte>(c->Character.Hair.Style);
+		pakout.Add<byte>(c->Character.Hair.Color);
+		pakout.Add<byte>(c->Character.Face.Style);
 		pakout.Add<word>(c->Equipment->GetItemId(1)); // Helmet
 		pakout.Add<word>(c->Equipment->GetItemId(12)); // Weapon
 		pakout.Add<word>(c->Equipment->GetItemId(7)); // Armor
@@ -439,7 +446,7 @@ PACKETHANDLER(pakClientReady) {
 		pakout.Add<word>(0x00);
 		pakout.Add<byte>(0x00);
 		pakout.Add<word>(0xffff);
-		pakout.Add<byte>(c->emote);
+		pakout.Add<byte>(c->Character.Emote);
 		pakout.Add<word>(0xffff);
 		pakout.Add<byte>(0);
 		pakout.Add<byte>(0);
@@ -551,10 +558,8 @@ PACKETHANDLER(pakChat){
 				pakout << word(0xffff);
 				pakout << word(0xFFFF);//TitleId/titlelevel
 				pakout << word(0x00);//Monster ID For Title
-				//0x27 bytes of bit array, oh joys.
-				pakout.Fill<byte>(0x00, 0x21);
-				pakout << byte(0x40);
-				pakout.Fill<byte>(0x00, 0x06);
+				//0x28 bytes of bit array, oh joys.
+				pakout.Fill<byte>(0x00, 0x28);
 				pakout << dword(0x00); // GuildID
 				pakout << word(0x0200);
 			}
@@ -696,14 +701,14 @@ PACKETHANDLER(pakChat){
 			char* itemName = itemInfo->GetStringId(strtoul(itemId, NULL, 0), 2);
 			if (itemName == NULL) {
 				CPacket pakout(0x2002);
-				pakout << thisclient->clientid;
+				pakout << thisclient->Character.ClientId;
 				pakout << byte(strlen("Item Not Found"));
 				pakout << ':';
 				pakout << "Item Not Found";
 				SendPacket(thisclient, &pakout);
 			}
 			CPacket pakout(0x2002);
-			pakout << thisclient->clientid;
+			pakout << thisclient->Character.ClientId;
 			pakout << byte(strlen(itemName));
 			pakout << ':';
 			pakout << itemName;
@@ -726,7 +731,7 @@ PACKETHANDLER(pakChat){
 	}else{
 		//leet test kekeke
 		CPacket pakout(0x2002);
-		pakout.Add<word>(thisclient->clientid);
+		pakout.Add<word>(thisclient->Character.ClientId);
 		pakout.Add<byte>(chatLen);
 		pakout.Add<byte>(0x01); // Unknown?
 		pakout.AddBytes(pak->Buffer() + pak->Pos(), chatLen);
@@ -745,7 +750,7 @@ PACKETHANDLER(pakShout) {
 	byte* message = pak->ReadBytes(length, true);
 	Log(MSG_DEBUG, "Shout: %s", message);
 	CPacket pakout(0x201f);
-	pakout.AddFixLenStr(thisclient->charname, 0x10);
+	pakout.AddFixLenStr(thisclient->Character.Name, 0x10);
 	pakout.Add<byte>(0x00);
 	pakout.Add<byte>(length);
 	pakout.AddBytes(message, length);
@@ -777,7 +782,7 @@ PACKETHANDLER(pakBasicAction) {
 	byte actionid = pak->Read<byte>();
 	Log(MSG_DEBUG, "0x2020 Do Emote -> id: %d", actionid);
 	CPacket pakout(0x2021);
-	pakout.Add<word>(thisclient->clientid);
+	pakout.Add<word>(thisclient->Character.ClientId);
 	pakout.Add<byte>(actionid);
 	SendPacket(thisclient, &pakout);
 	return true;
@@ -785,92 +790,96 @@ PACKETHANDLER(pakBasicAction) {
 
 PACKETHANDLER(pakUserLogin){
 	MYSQL_RES* result = NULL;
-	char charname[0x13];
-	charname[0x12] = 0;
-	memcpy(charname, pak->Data() + 2, 0x12);
 
-	thisclient->charname = db->MakeSQLSafe(charname);
-	thisclient->loginid = pak->Get<word>(0);
-	if(_strcmpi(thisclient->charname, charname)){
-		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->charname, charname);
+	memcpy(thisclient->Character.Name, pak->Data() + 2, 0x10);
+	// Check if the name is "SQL Safe"
+	char* charname = db->MakeSQLSafe(thisclient->Character.Name);
+	if(_strcmpi(thisclient->Character.Name, charname)){
+		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->Character.Name, charname);
 		goto authFail;
 	}
 
-	Log(MSG_DEBUG, "Charname: %s, Unique Id: %d", thisclient->charname, thisclient->loginid);
-
-	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face`, c.`inventory`, c.`equipment` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->charname);
+	// Check the LoginId supplied by the client
+	thisclient->LoginId = pak->Get<word>(0);
+	Log(MSG_DEBUG, "Charname: %s, Unique Id: %d", thisclient->Character.Name, thisclient->LoginId);
+	result = db->DoSQL("SELECT u.`id`,u.`username`,u.`loginid`,u.`accesslevel`,u.`lastslot`,c.`id`,c.`level`,c.`profession`,c.`ismale`,c.`map`,c.`hair`,c.`haircolor`,c.`face`, c.`inventory`, c.`equipment` FROM `users` AS `u`, `characters` AS `c` WHERE c.`charname`='%s' AND u.`username`=c.`owner`", thisclient->Character.Name);
 	if(!result || mysql_num_rows(result) != 1){
-		Log(MSG_DEBUG, "SELECT returned bollocks");
+		Log(MSG_DEBUG, "Character doesn't exist.");
+		thisclient->Id = -1;
 		goto authFail;
 	}
 
 	MYSQL_ROW row = mysql_fetch_row(result);
 
 	{	// Check loginid
-		if (thisclient->loginid != ((word*)row[2])[0]) {
-			Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->loginid, ((word*)row[2])[0]);
-		thisclient->id = -1;
+		if (thisclient->LoginId != ((word*)row[2])[0]) {
+			Log(MSG_DEBUG, "Incorrect loginid %d != %d", thisclient->LoginId, ((word*)row[2])[0]);
+		thisclient->Id = -1;
 		goto authFail;
 		}
+	}
+
+	// Specific to client, not character.
+	thisclient->Id = atoi(row[0]);
+	strcpy_s(thisclient->Username, 0x12, row[1]);
+	thisclient->AccessLevel = atoi(row[3]);
+	thisclient->LastSlot = atoi(row[4]);
+
+	// Check AccessLevel
+	if(thisclient->AccessLevel < 1){
+		Log(MSG_DEBUG, "AccessLevel < 1 -> Banned");
+		thisclient->Id = -1;
+		goto authFail;
 	}
 
 	// Initialize inventory space.
 	thisclient->Inventory = new CItemManager(itemInfo, MAXINVSLOT);
 	thisclient->Equipment = new CItemManager(itemInfo, MAXEQSLOT);
 
-	thisclient->id = atoi(row[0]);
-	thisclient->username = row[1];
-	thisclient->accesslevel = atoi(row[3]);
-	thisclient->lastslot = atoi(row[4]);
-	thisclient->charid = atoi(row[5]);
-	thisclient->clientid = thisclient->charid; // FIXME: Find a better way to do this.
-	thisclient->level = atoi(row[6]);
-	thisclient->profession = atoi(row[7]);
-	thisclient->gender = atoi(row[8]);
-	thisclient->hairstyle = atoi(row[10]);
-	thisclient->haircolor = atoi(row[11]);
-	thisclient->facestyle = atoi(row[12]);
+	// Specific to character.
+	thisclient->Character.Id = atoi(row[5]);
+	thisclient->Character.ClientId = thisclient->Character.Id; // FIXME: Find a better way to do this.
+	thisclient->Character.Level = atoi(row[6]);
+	thisclient->Character.Job = atoi(row[7]);
+	thisclient->Character.Gender = atoi(row[8]);
+	thisclient->Character.Hair.Style = atoi(row[10]);
+	thisclient->Character.Hair.Color = atoi(row[11]);
+	thisclient->Character.Face.Style = atoi(row[12]);
 
-	thisclient->curX = thisclient->newX = 3257;
-	thisclient->curY = thisclient->newY = 9502;
+	strcpy_s(thisclient->Character.Map, 0x0D, row[9]);
+	thisclient->Character.Pos.Y = thisclient->Character.NewPos.Y = 3257;
+	thisclient->Character.Pos.X = thisclient->Character.NewPos.X = 9502;
 	
 	thisclient->Inventory->LoadItemDump((byte*)row[13]);
 	thisclient->Equipment->LoadItemDump((byte*)row[14]);
-
-	if(thisclient->accesslevel < 1){
-		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
-		thisclient->id = -1;
-		goto authFail;
-	}
-
 	{	// Char Info
 		CPacket pakout(0x1038);
-			pakout << (dword)thisclient->charid;
-			pakout << FixLenStr(thisclient->charname, 0x10);
-			pakout << thisclient->lastslot; // Slot
-			pakout << thisclient->level; // Level
-			pakout << qword(0x00); // Total Exp
+			pakout << (dword)thisclient->Character.Id;
+			pakout << FixLenStr(thisclient->Character.Name, 0x10);
+			pakout << thisclient->LastSlot; // Slot
+			pakout << (byte)thisclient->Character.Level; // Level
+			pakout << qword(thisclient->Character.Exp); // Total Exp
 			pakout << dword(0x00); // Unk - Doesn't appear to change anything
 			pakout << word(0x000f); // HP Stones
 			pakout << word(0x000b); // SP Stones
-			pakout << dword(0x002E); // HP
-			pakout << dword(0x0020); // SP
-			pakout << dword(0x0000); // Fame
-			pakout << qword(0x1d1a); // Money
-			pakout.AddFixLenStr(row[9], 0x0C); // Cur map
-			pakout << dword(thisclient->curY); // Y
-			pakout << dword(thisclient->curX); // X
-			pakout << byte(0x5a); // Starting Rotation
-			pakout << byte(0x01); // STR+
-			pakout << byte(0x02); // END+
-			pakout << byte(0x03); // DEX+
-			pakout << byte(0x04); // INT+
-			pakout << byte(0x05); // SPR+
+			pakout << dword(thisclient->Character.Hp); // HP
+			pakout << dword(thisclient->Character.Sp); // SP
+			pakout << dword(thisclient->Character.Fame); // Fame
+			pakout << qword(thisclient->Character.Money); // Money
+			pakout.AddFixLenStr(thisclient->Character.Map, 0x0C); // Cur map
+			pakout << dword(thisclient->Character.Pos.Y); // Y
+			pakout << dword(thisclient->Character.Pos.X); // X
+			pakout << byte(thisclient->Character.Pos.Rotation); // Starting Rotation
+			pakout << byte(thisclient->Character.StrBonus); // STR+
+			pakout << byte(thisclient->Character.EndBonus); // END+
+			pakout << byte(thisclient->Character.DexBonus); // DEX+
+			pakout << byte(thisclient->Character.IntBonus); // INT+
+			pakout << byte(thisclient->Character.SprBonus); // SPR+
 
 			//  If you see anything ingame that matches any of these numbers, update this
 			pakout << byte(0x06);
 			pakout << byte(0x07);
-			pakout << dword(0x00); // Kill Points
+			pakout << dword(thisclient->Character.KillPoints); // Kill Points
 			pakout << byte(0x0c);
 			pakout << byte(0x0d);
 			pakout << byte(0x0e);
@@ -883,16 +892,16 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Look info
 		CPacket pakout(0x1039);
-			pakout << byte(0x01 | (thisclient->profession << 2) | (atoi(row[8]) << 7)); // Class
-			pakout << byte(atoi(row[10])); // Hair
-			pakout << byte(atoi(row[11])); // Hair Color
-			pakout << byte(atoi(row[12])); // Face
+			pakout << byte(thisclient->Character.Profession); // Profession (Gender+Job)
+			pakout << byte(thisclient->Character.Hair.Style); // Hair
+			pakout << byte(thisclient->Character.Hair.Color); // Hair Color
+			pakout << byte(thisclient->Character.Face.Style); // Face
 		SendPacket(thisclient, &pakout);
 	}
 
 	{	// Quests?
 		CPacket pakout(0x103a);
-			pakout << (dword)thisclient->charid;
+			pakout << (dword)thisclient->Character.Id;
 			pakout << byte(0x01);
 			pakout << byte(0x00); // Count
 		SendPacket(thisclient, &pakout);
@@ -900,7 +909,7 @@ PACKETHANDLER(pakUserLogin){
 
 	{	// Basic Action? <-- hell no.
 		CPacket pakout(0x103b);
-			pakout << (dword)thisclient->charid;
+			pakout << (dword)thisclient->Character.Id;
 			pakout << word(0x00);
 		SendPacket(thisclient, &pakout);
 	}
@@ -908,7 +917,7 @@ PACKETHANDLER(pakUserLogin){
 	{	// Active Skill list
 		CPacket pakout(0x103d);
 		pakout << byte(0x00); // Unk
-		pakout << (dword)thisclient->charid; // Char ID
+		pakout << (dword)thisclient->Character.Id; // Char ID
 		pakout << word(0x01); // Num of skills
 		{ // For num of skills
 			pakout << word(0x18D8); // Skill ID [Inferno01]
@@ -987,7 +996,7 @@ PACKETHANDLER(pakUserLogin){
 
 	{
 		CPacket pakout(0x1802);
-			pakout << word(thisclient->clientid);
+			pakout << word(thisclient->Character.ClientId);
 			pakout.AddBytes((byte*)packet1802, 236);
 		SendPacket(thisclient, &pakout);
 	}
@@ -1017,7 +1026,7 @@ void CGameServer::OnClientDisconnect(CTitanClient* baseclient) {
 
 	char* InvDump_Safe = db->MakeSQLSafe((string)InvDump, InvSize);
 	char* EquipDump_Safe = db->MakeSQLSafe((string)EquipDump, EquipSize);
-	db->ExecSQL("UPDATE `characters` SET `inventory` = '%s', `equipment` = '%s' WHERE `id` = %i", InvDump_Safe, EquipDump_Safe, thisclient->charid);
+	db->ExecSQL("UPDATE `characters` SET `inventory` = '%s', `equipment` = '%s' WHERE `id` = %i", InvDump_Safe, EquipDump_Safe, thisclient->Character.Id);
 
 	thisclient->Inventory->FreeDump(InvDump);
 	thisclient->Equipment->FreeDump(EquipDump);
@@ -1026,7 +1035,7 @@ void CGameServer::OnClientDisconnect(CTitanClient* baseclient) {
 
 	// Hide player entity.
 	CPacket pakout(0x1c0e);
-	pakout.Add<word>(thisclient->clientid);
+	pakout.Add<word>(thisclient->Character.ClientId);
 	for (word i = 0; i < ClientList.size(); i++)
 		SendPacket(ClientList.at(i), &pakout);
 	

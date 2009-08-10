@@ -1,75 +1,58 @@
 /* Copyright (C) 2008, 2009 TitanFiesta Dev Team
  * Licensed under GNU GPL v3
  * For license details, see LICENCE in the root folder. */
+#pragma once
 
 #define PACKETHANDLER(func) bool CGameServer::func( CGameClient* thisclient, CTitanPacket* pak )
 #define PACKETRECV(func) func(thisclient, pak)
 
 #include "..\Common\CShn.hpp"
 #include "..\Common\CItems.hpp"
+#include "CCharacter.h"
 
 class CGameClient : public CTitanClient
 {	
 public:
 	CGameClient( ) {
-		username = NULL;
-		password = NULL;
-		id = -1;
-		accesslevel = -1;
+		Username[0x11] = 0;
+		Id = -1;
+		AccessLevel = -1;
 		Inventory = NULL;
 		Equipment = NULL;
 		
-		level = 0;
-		profession = 0;
-		gender = 0;
-		facestyle = 0;
-		hairstyle = 0;
-		haircolor = 0;
-		emote = -1;
-
 	}
 	~CGameClient( ){
 		if(Inventory != NULL) delete Inventory;
 		if(Equipment != NULL) delete Equipment;
-		if(username != NULL)
-			free(username);
-		DELARR(password);
 	}
 
 	dword xorTableLoc;
-	char* username;
-	char* password;
-	char* charname;
-	int id;
-	dword charid;
-	int accesslevel;
-	byte lastslot;
-	int loginid;
-	word clientid;
-
-	byte level;
-	byte profession;
-	byte gender;
-	byte facestyle;
-	byte hairstyle;
-	byte haircolor;
-	byte emote;
+	char Username[0x12];
+	int Id;
+	int AccessLevel;
+	byte LastSlot;
+	int LoginId;
 
 	CItemManager* Inventory;
 	CItemManager* Equipment;
 
-	dword newX;
-	dword newY;
-	dword curX;
-	dword curY;
+	CCharacter Character;
 private:
 };
 
 class CGameServer : public CTitanServer
 {
 public:
-	CGameServer( ) { }
-	~CGameServer( ) { };
+	CGameServer( ) {
+		itemInfo = NULL;
+		mapInfo = NULL;
+	}
+	~CGameServer( ) {
+		if (itemInfo != NULL) delete itemInfo;
+		if (mapInfo != NULL) delete mapInfo;
+
+
+	};
 
 	CGameClient* CreateNewClient( ){	return new CGameClient();}
 	bool OnServerReady( );
@@ -144,4 +127,5 @@ private:
 
 	CTitanSQL* db;
 	CShn* itemInfo;
+	CShn* mapInfo;
 };
