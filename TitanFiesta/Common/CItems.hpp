@@ -278,9 +278,9 @@ public:
 			Size += Stats * sizeof(SItemStat) + 1;
 		SItemBase* Item = (SItemBase*)new byte[Size];
 		memset(Item, 0, Size);
-		Log(MSG_INFO, "Created item: Size: %d  Class: %d  Type: %d  Id: %d", Size, Class, ItemType << 2, ItemId);
+
 		Item->Id = ItemId;
-		Item->Length = Size - 1; // -1 to account for Size
+		Item->Length = Size - 1; // -1 to account for Size byte
 		Item->Slot = 0;
 		Item->Type = ItemType << 2;
 
