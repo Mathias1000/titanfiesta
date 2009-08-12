@@ -5,8 +5,9 @@
 
 #pragma pack(push)
 #pragma pack(1)
-struct CCharacter
+class CCharacter
 {
+public:
 	dword Id;
 	word ClientId;
 	char Name[0x10];

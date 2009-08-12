@@ -5,6 +5,18 @@
 #include "main.h"
 #include "CGameServer.hpp"
 #include "CCharacter.h"
+#include "CMap.h"
+
+CGameServer::~CGameServer() {
+	if (itemInfo != NULL) delete itemInfo;
+	if (mapInfo != NULL) delete mapInfo;
+
+	// Wait for Map threads to stop.
+	thrGrpMaps.join_all();
+	// Cleanup map instances.
+	for (word i = 0; i < MapList.size(); i++)
+		delete MapList.at(i);
+}
 
 bool CGameServer::OnServerReady(){
 	CTitanIniReader ini("GameServer.ini");
@@ -22,9 +34,22 @@ bool CGameServer::OnServerReady(){
 		return false;
 	}
 	mapInfo = new CShn();
-	if (!mapInfo->Open("MapInfo.shn", 0)) {
+	if (!mapInfo->Open("MapInfo.shn", 0, 1)) {
 		Log(MSG_ERROR, "Could not open 'MapInfo.shn'");
 		return false;
+	}
+	
+	// Create a CMap for all maps, start threads.
+	for (word i = 0; i < mapInfo->RowCount(); i++) {
+		// Create CMap instance. Add to Vector and Map.
+		CShnRow* Row = mapInfo->Row(i);
+		CMap* Map = new CMap(Row, this);
+		MapList.push_back( Map );
+		Maps.insert( std::make_pair( Row->cells[0]->wData, Map ) );
+
+		// Create thread and add it to the thread group.
+		boost::thread* MapThread = new boost::thread(boost::bind(&CMap::Thread, Map));
+		thrGrpMaps.add_thread(MapThread);
 	}
 	
 	ServerData.flags = 0;
@@ -41,7 +66,6 @@ bool CGameServer::OnServerReady(){
 	CISCPacket pakout(TITAN_ISC_IDENTIFY);
 	pakout.Add<CServerData*>( &ServerData );
 	SendISCPacket( &pakout );
-
 	return true;
 }
 
@@ -84,10 +108,10 @@ void CGameServer::OnReceivePacket( CTitanClient* baseclient, CTitanPacket* pak )
 				PACKETRECV(pakChat);
 			break;
 			case 0x2012:
-				Log(MSG_DEBUG, "0x2012 Stop Moving -> cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>());
+				Log(MSG_DEBUG, "0x2012 Stop Moving -> cX: %d cY: %d", pak->Read<dword>(), pak->Read<dword>());
 			break;
             case 0x2017:
-                Log(MSG_DEBUG, "0x2017 Walk Packet -> nY: %d nX: %d cY: %d cX: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
+                Log(MSG_DEBUG, "0x2017 Walk Packet -> nX: %d nY: %d cX: %d cY: %d", pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>(), pak->Read<dword>());
             break;
 			case 0x2019:
 				PACKETRECV(pakMove);
@@ -359,34 +383,35 @@ PACKETHANDLER(pakRest){
 }
 
 PACKETHANDLER(pakMove) {
-	thisclient->Character.NewPos.Y = pak->Read<dword>();
 	thisclient->Character.NewPos.X = pak->Read<dword>();
-	thisclient->Character.Pos.Y = pak->Read<dword>();
+	thisclient->Character.NewPos.Y = pak->Read<dword>();
 	thisclient->Character.Pos.X = pak->Read<dword>();
-	Log(MSG_DEBUG, "0x2019 Move Packet -> nY: %d nX: %d cY: %d cX: %d", 
-		thisclient->Character.NewPos.Y, thisclient->Character.NewPos.X, 
-		thisclient->Character.Pos.Y, thisclient->Character.Pos.X);
+	thisclient->Character.Pos.Y = pak->Read<dword>();
+	/*Log(MSG_DEBUG, "0x2019 Move Packet -> nX: %d nY: %d cX: %d cY: %d", 
+		thisclient->Character.NewPos.X, thisclient->Character.NewPos.Y, 
+		thisclient->Character.Pos.X, thisclient->Character.Pos.Y);*/
 
 	CPacket pakout(0x201a);
 		pakout.Add<word>(thisclient->Character.ClientId);
-		pakout.Add<dword>(thisclient->Character.NewPos.Y);
 		pakout.Add<dword>(thisclient->Character.NewPos.X);
-		pakout.Add<dword>(thisclient->Character.Pos.Y);
+		pakout.Add<dword>(thisclient->Character.NewPos.Y);
 		pakout.Add<dword>(thisclient->Character.Pos.X);
+		pakout.Add<dword>(thisclient->Character.Pos.Y);
 		pakout.Add<word>(0x68); // Speed?
 
-	for (dword i = 0; i < ClientList.size(); i++)
-		SendPacket((CGameClient*)ClientList.at(i), &pakout);
+	thisclient->Map->SendToAll(&pakout);
+	//for (dword i = 0; i < ClientList.size(); i++)
+	//	SendPacket((CGameClient*)ClientList.at(i), &pakout);
 
 	return true;
 }
 
 PACKETHANDLER(pakClientReady) {
-	CPacket pakident(0x1c06);
+/*	CPacket pakident(0x1c06);
 		pakident.Add<word>(thisclient->Character.ClientId);
 		pakident.AddFixLenStr(thisclient->Character.Name, 0x10);
-		pakident.Add<dword>(thisclient->Character.Pos.Y);
 		pakident.Add<dword>(thisclient->Character.Pos.X);
+		pakident.Add<dword>(thisclient->Character.Pos.Y);
 		pakident.Add<byte>(0);
 		pakident.Add<byte>(0x01); // State
 		pakident.Add<byte>(thisclient->Character.Job);
@@ -423,8 +448,8 @@ PACKETHANDLER(pakClientReady) {
 		CPacket pakout(0x1c06);
 		pakout.Add<word>(c->Character.ClientId);
 		pakout.AddFixLenStr(c->Character.Name, 0x10);
-		pakout.Add<dword>(c->Character.Pos.Y);
 		pakout.Add<dword>(c->Character.Pos.X);
+		pakout.Add<dword>(c->Character.Pos.Y);
 		pakout.Add<byte>(0);
 		pakout.Add<byte>(0x01); // State
 		pakout.Add<byte>(c->Character.Job);
@@ -457,7 +482,11 @@ PACKETHANDLER(pakClientReady) {
 
 		SendPacket(thisclient, &pakout); // Send client to thisclient
 		SendPacket(c, &pakident); // Send thisclient to client
-	}
+	}*/
+	// AddClient will take care of sending the characters data
+	// to all other clients on the map, and showing the new player
+	// drop and mob data.
+	thisclient->Map->AddClient(thisclient);
 
 	return true;
 }
@@ -474,7 +503,11 @@ PACKETHANDLER(pakChat){
 		char* context;
 		command = strtok_s(command, " ", &context);
 		Log(MSG_DEBUG, "Lul wut GM COMMAND %s", command);
-		if(_strcmpi(command, "title") == 0){
+		if(_strcmpi(command, "StopMaps") == 0) {
+			for (word i = 0; i < MapList.size(); i++) {
+				MapList.at(i)->EndThread();
+			}
+		}else if(_strcmpi(command, "title") == 0){
 			char* titleId = strtok_s(NULL, " ", &context);
 			char* titleLevel = strtok_s(NULL, " ", &context);
 			if(titleId == NULL || titleLevel == NULL){
@@ -485,6 +518,35 @@ PACKETHANDLER(pakChat){
 			pakout << strtobyte(titleId);
 			pakout << byte(0x80 | strtobyte(titleLevel));
 			SendPacket(thisclient, &pakout);
+		}else if (_strcmpi(command, "map") == 0){
+			char* mapId = strtok_s(NULL, " ", &context);
+			if (mapId == NULL) {
+				Log(MSG_DEBUG, "Not enough params, require MapId");
+				return true;
+			}
+			std::map<word, CMap*>::iterator it = Maps.find(atoi(mapId));
+			if (it == Maps.end()) {
+				Log(MSG_DEBUG, "Couldn't find map %s", mapId);
+				return true;
+			}
+			CMap* Map = it->second;
+			word MapId = it->first;
+			// Update Character
+			thisclient->Character.Pos.X = Map->GetStartX();
+			thisclient->Character.Pos.Y = Map->GetStartY();
+			strcpy_s(thisclient->Character.Map, 0x0C, Map->GetMapName());
+			Log(MSG_DEBUG, "Sending %s to %s (%d,%d)", 
+				thisclient->Character.Name, thisclient->Character.Map,
+				thisclient->Character.Pos.X, thisclient->Character.Pos.Y);
+			// Remove character from previous map.
+			thisclient->Map->RemoveClient(thisclient);
+			thisclient->Map = Map;
+			// Teleport Character
+			CPacket pakout(0x1809);
+			pakout.Add<word>(MapId);
+			pakout.Add<dword>(thisclient->Character.Pos.X);
+			pakout.Add<dword>(thisclient->Character.Pos.Y);
+			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "mon") == 0){
 			char* monId = strtok_s(NULL, " ", &context);
 			if(monId == NULL){
@@ -493,12 +555,12 @@ PACKETHANDLER(pakChat){
 			}
 			 
 			CPacket pakout(0x1C08);
-			pakout << word(0x1336);
-			pakout << strtoword(monId);
-			pakout << dword(0x251e);
-			pakout << dword(0x0cb9);
-			pakout << dword(1337);
-			pakout.Fill<byte>(0, 0x21);
+			pakout.Add<word>(0x1336);
+			pakout.Add<word>(strtoword(monId));
+			pakout.Add<dword>(thisclient->Character.Pos.X + 50);
+			pakout.Add<dword>(thisclient->Character.Pos.Y + 50);
+			pakout.Add<byte>(thisclient->Character.Pos.Rotation);
+			pakout.Fill<byte>(0, 0x29);
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "delsoulja") == 0){
 			char* souljaNumber = strtok_s(NULL, " ", &context);
@@ -525,8 +587,8 @@ PACKETHANDLER(pakChat){
 			float rotationIncrements = 180.0f / float(souljaCount);
 			float radius = (txtRadius == NULL)?50.0f:float(atoi(txtRadius));
 			word clientIdStart = 0x3000;
-			dword xStart = 9110;
-			dword yStart = 3516;
+			dword xStart = thisclient->Character.Pos.X;
+			dword yStart = thisclient->Character.Pos.Y;
 			char name[0x10];
 			CPacket pakout(0x1c07);
 			pakout << byte(souljaCount);
@@ -599,10 +661,9 @@ PACKETHANDLER(pakChat){
 			CPacket pakout(0x1c0A);
 			pakout << word(0x1335);
 			pakout << strtoword(itemId);
-			pakout << dword(0x251e);
-			pakout << dword(0x0cb9);
-			pakout << byte(0x60);
-			pakout << byte(0x35);
+			pakout << dword(thisclient->Character.Pos.X + 50);
+			pakout << dword(thisclient->Character.Pos.Y + 50);
+			pakout << word(thisclient->Character.ClientId);
 			pakout << byte(0x08);
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "item") == 0){
@@ -648,8 +709,8 @@ PACKETHANDLER(pakChat){
 			}
 			Log(MSG_DEBUG, "Tele nX: %d nY: %d", strtoul(teleX, NULL, 0), strtoul(teleY, NULL, 0));
 			CPacket pakout(0x201b);
-			pakout << strtodword(teleY);
 			pakout << strtodword(teleX);
+			pakout << strtodword(teleY);
 			SendPacket(thisclient, &pakout);
 		}else if(_strcmpi(command, "equip") == 0){
 			char* itemId = strtok_s(NULL, " ", &context);
@@ -832,6 +893,17 @@ PACKETHANDLER(pakUserLogin){
 		goto authFail;
 	}
 
+	{
+		// Validate player map and add player to CMap.
+		std::map<word, CMap*>::iterator it = Maps.find(atoi(row[9]));
+		if (it == Maps.end()) {
+			Log(MSG_DEBUG, "Error, couldn't find map by Id: %d", atoi(row[9]));
+			thisclient->Id = -1;
+			goto authFail;
+		}
+		thisclient->Map = it->second;
+	}
+
 	// Initialize inventory space.
 	thisclient->Inventory = new CItemManager(itemInfo, MAXINVSLOT);
 	thisclient->Equipment = new CItemManager(itemInfo, MAXEQSLOT);
@@ -846,9 +918,10 @@ PACKETHANDLER(pakUserLogin){
 	thisclient->Character.Hair.Color = atoi(row[11]);
 	thisclient->Character.Face.Style = atoi(row[12]);
 
-	strcpy_s(thisclient->Character.Map, 0x0D, row[9]);
-	thisclient->Character.Pos.Y = thisclient->Character.NewPos.Y = 3257;
-	thisclient->Character.Pos.X = thisclient->Character.NewPos.X = 9502;
+	strcpy_s(thisclient->Character.Map, 0x0D, thisclient->Map->GetMapName());
+	Log(MSG_DEBUG, "Map: %s", thisclient->Character.Map);
+	thisclient->Character.Pos.X = thisclient->Character.NewPos.X = thisclient->Map->GetStartX();
+	thisclient->Character.Pos.Y = thisclient->Character.NewPos.Y = thisclient->Map->GetStartY();
 	
 	thisclient->Inventory->LoadItemDump((byte*)row[13]);
 	thisclient->Equipment->LoadItemDump((byte*)row[14]);
@@ -867,8 +940,8 @@ PACKETHANDLER(pakUserLogin){
 			pakout << dword(thisclient->Character.Fame); // Fame
 			pakout << qword(thisclient->Character.Money); // Money
 			pakout.AddFixLenStr(thisclient->Character.Map, 0x0C); // Cur map
-			pakout << dword(thisclient->Character.Pos.Y); // Y
 			pakout << dword(thisclient->Character.Pos.X); // X
+			pakout << dword(thisclient->Character.Pos.Y); // Y
 			pakout << byte(thisclient->Character.Pos.Rotation); // Starting Rotation
 			pakout << byte(thisclient->Character.StrBonus); // STR+
 			pakout << byte(thisclient->Character.EndBonus); // END+
@@ -1017,6 +1090,9 @@ authFail:
 
 void CGameServer::OnClientDisconnect(CTitanClient* baseclient) {
 	CGameClient* thisclient = (CGameClient*)baseclient;
+	// Don't bother if the client hasn't actually "connected"
+	if (thisclient->Id == -1) return;
+
 	Log(MSG_INFO, "Saving Inventory");
 
 	word InvSize = 0;

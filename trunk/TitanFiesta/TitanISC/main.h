@@ -19,6 +19,8 @@
 
 //Other Settings
 #define TITAN_CLIENTS_PER_THREAD 10
+#define TITAN_SHOW_STATUS_DELAY 30
+#define TITAN_USING_SHOW_STATUS
 
 #include "..\..\TitanBase\TitanBase\TitanGlobals.h"
 
