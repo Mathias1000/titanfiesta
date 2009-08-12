@@ -64,7 +64,7 @@ public:
 		rows.clear();
 	}
 
-	bool Open(char* path, int theIdMap = -1){
+	bool Open(char* path, int theIdMap = -1, int theStrMap = -1){
 		FILE* fh;
 		fopen_s(&fh, path, "rb");
 		if(fh == NULL) return false;
@@ -82,6 +82,7 @@ public:
 		}
 
 		useIdMap = theIdMap;
+		useStrMap = theStrMap;
 
 		Decrypt(data + 0x24, filesize - 0x24);
 
@@ -151,8 +152,11 @@ public:
 				curRow->cells[j] = curData;
 			}
 			rows.push_back(curRow);
+			// Setup the Map if needed. Can be by either an Id, or a String
 			if(useIdMap != -1)
 				idMap[curRow->cells[useIdMap]->wData] = curRow;
+			if (useStrMap != -1 && (columns[useStrMap]->type == 26 || columns[useStrMap]->type == 9))
+				strMap.insert( std::make_pair( std::string(curRow->cells[useStrMap]->strData), curRow ) );
 		}
 
 		delete [] data;
@@ -224,6 +228,16 @@ public:
 			return NULL;
 	}
 
+	CShnRow* RowByString(char* str) {
+		std::map<std::string, CShnRow*>::iterator cur = strMap.find(std::string(str));
+		return (cur == strMap.end()) ? NULL : cur->second;
+	}
+
+	CShnRow* RowById(word id) {
+		std::map<word, CShnRow*>::iterator cur = idMap.find(id);
+		return (cur == idMap.end()) ? NULL : cur->second;
+	}
+
 private:
 	template <typename T> inline T dataRead(byte* data, dword* position){
 		(*position) += sizeof(T);
@@ -245,5 +259,7 @@ private:
 	std::vector<CShnColumn*> columns;
 	std::vector<CShnRow*> rows;
 	int useIdMap;
+	int useStrMap;
 	std::map<word, CShnRow*> idMap;
+	std::map<std::string, CShnRow*> strMap;
 };

@@ -176,6 +176,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CMap.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\main.cpp"
 				>
 			</File>
@@ -194,7 +198,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CGameClient.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CGameServer.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CMap.h"
 				>
 			</File>
 			<File

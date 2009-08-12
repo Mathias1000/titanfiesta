@@ -14,7 +14,7 @@
 #pragma warning( push )
 #pragma warning( disable: 4200 )
 
-#include "..\Common\Common.h"
+#include "main.h"
 #include "..\Common\CShn.hpp"
 
 // Data Type Definitions

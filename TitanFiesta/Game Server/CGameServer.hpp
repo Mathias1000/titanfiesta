@@ -7,38 +7,9 @@
 #define PACKETRECV(func) func(thisclient, pak)
 
 #include "..\Common\CShn.hpp"
-#include "..\Common\CItems.hpp"
-#include "CCharacter.h"
+#include "CGameClient.h"
 
-class CGameClient : public CTitanClient
-{	
-public:
-	CGameClient( ) {
-		Username[0x11] = 0;
-		Id = -1;
-		AccessLevel = -1;
-		Inventory = NULL;
-		Equipment = NULL;
-		
-	}
-	~CGameClient( ){
-		if(Inventory != NULL) delete Inventory;
-		if(Equipment != NULL) delete Equipment;
-	}
-
-	dword xorTableLoc;
-	char Username[0x12];
-	int Id;
-	int AccessLevel;
-	byte LastSlot;
-	int LoginId;
-
-	CItemManager* Inventory;
-	CItemManager* Equipment;
-
-	CCharacter Character;
-private:
-};
+class CMap; // Forward decleration
 
 class CGameServer : public CTitanServer
 {
@@ -47,12 +18,7 @@ public:
 		itemInfo = NULL;
 		mapInfo = NULL;
 	}
-	~CGameServer( ) {
-		if (itemInfo != NULL) delete itemInfo;
-		if (mapInfo != NULL) delete mapInfo;
-
-
-	};
+	~CGameServer( );
 
 	CGameClient* CreateNewClient( ){	return new CGameClient();}
 	bool OnServerReady( );
@@ -128,4 +94,9 @@ private:
 	CTitanSQL* db;
 	CShn* itemInfo;
 	CShn* mapInfo;
+
+	// Map threads
+	std::map<word, CMap*> Maps; // Links mapid -> CMap instance.
+	std::vector<CMap*> MapList; // Used for quick-access to all maps.
+	boost::thread_group thrGrpMaps;
 };
