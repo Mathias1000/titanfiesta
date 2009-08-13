@@ -19,6 +19,7 @@ CMap::CMap(CShnRow* MapInfo, CTitanServer* Server) {
 
 	Tick = 0;
 	Running = true;
+	NextEID = 100;
 }
 
 CMap::~CMap() {
@@ -165,4 +166,22 @@ void CMap::SendToAll(CPacket* pak) {
 		Server->SendPacket(*i, pak);
 	}
 	rwmClientList.releaseReadLock();
+}
+
+word CMap::GetNewEID(){
+	word NewEID;
+	if (EIDRecycle.empty()){
+		NewEID = NextEID;
+		if (NextEID != MAX_EID)
+			NextEID++;
+	}
+	else{
+		NewEID = EIDRecycle.top();
+		EIDRecycle.pop();
+	}
+	return NewEID;
+}
+
+void CMap::FreeEID(word EID){
+	EIDRecycle.push(EID);
 }
