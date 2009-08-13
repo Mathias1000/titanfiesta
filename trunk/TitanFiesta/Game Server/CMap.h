@@ -4,6 +4,7 @@
 #pragma once
 
 #include <vector>
+#include <stack>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
@@ -11,6 +12,8 @@
 #include "main.h" // Includes all titan crap.
 #include "../../TitanBase/TitanBase/CReadWriteMutex.hpp"
 #include "../Common/CShn.hpp"
+
+const word MAX_EID = 0xffff; //maximum value that can be allocated for entity id + 1
 
 class CGameClient; // Forward decleration.
 
@@ -44,6 +47,11 @@ public:
 	byte GetInside() {
 		return Inside;
 	}
+
+	word GetNewEID(); //returns unused entity id or MAX_EID if all are allocated
+	void FreeEID(word EID); //this function should be called when an entity is deleted
+							//to free its entity id
+
 private:
 	CTitanServer* Server;
 
@@ -62,4 +70,7 @@ private:
 
 	dword Tick;
 	bool Running;
+
+	word NextEID; //highest entity id unallocated since server start
+	std::stack<word> EIDRecycle; //EIDs that were used but can be reallocated now
 };
