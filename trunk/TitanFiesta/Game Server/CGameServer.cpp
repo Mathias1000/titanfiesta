@@ -635,9 +635,6 @@ PACKETHANDLER(pakChat){
 			}
 		}else if(_strcmpi(command, "ask") == 0){
 			CPacket pakout(0x3c01);
-			if (SERVERTYPE == EURSERVER)
-				pakout.AddFixLenStr("Who would you like to have sex with?", 0x41);
-			else
 			pakout.AddFixLenStr("Who would you like to have sex with?", 0x40);
 			pakout << byte(0x03);//Answer Count
 

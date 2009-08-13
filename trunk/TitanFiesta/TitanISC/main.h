@@ -10,6 +10,7 @@
 
 //Optional Extra Includes
 //#define TITAN_USING_ISC
+#define TITAN_USING_INIREAD
 #define TITAN_IS_ISC_SERVER
 #define TITAN_USING_RANDOM
 

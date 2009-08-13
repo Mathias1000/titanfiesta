@@ -7,6 +7,7 @@
 //
 
 #pragma once
+
 typedef unsigned __int8 byte;
 typedef unsigned __int16 word;
 typedef unsigned __int32 dword;
@@ -14,14 +15,16 @@ typedef unsigned __int32 dword;
 #define DELARR(x) if(x != NULL){ delete [] x; x = NULL; }
 #define DELVEC(x) for(dword i = 0; i < x.size(); i++){DEL(x.at(i));} x.clear();
 #define DELVECARR(x) for(dword i = 0; i < x.size(); i++){DELARR(x.at(i));} x.clear();
+#define DEL2DARR( arr, size ) { if( arr != NULL ) { for(dword i = 0; i < size; i++){ delete arr[i]; } delete [] arr; arr = NULL; } }
 
 //#include "CListCtrlEx/listctrlex.h"
 #include <vector>
 #include "CTitanFile.hpp"
-#include "CSHN.hpp"
+#include "../Common/Common.h"
+#include "../Common/CShn.hpp"
 #include "CTitanListCtrl.hpp"
 
-extern CSHN* curFile;
+extern CShn* curFile;
 
 // CDlg dialog
 class CDlg : public CDialog

@@ -135,10 +135,6 @@ PACKETHANDLER(pakJoinServer){
 // USA Client Login
 PACKETHANDLER(pakTokenLogin){
 	MYSQL_RES* result = NULL;
-	if (SERVERTYPE != USASERVER) {
-		Log(MSG_DEBUG, "USA client tried connecting");
-		goto authFail;
-	}
 
 	char md5hash[33];
 	char username[0x12];
@@ -213,7 +209,7 @@ PACKETHANDLER(pakTokenLogin){
 authFail:
 	{
 		CPacket pakout(0x0C09);
-		pakout.Add<word>(0x44);
+		pakout.Add<word>(0x45);
 		SendPacket(thisclient, &pakout);
 	}
 	if (result != NULL)
@@ -223,98 +219,11 @@ authFail:
 
 // Europe Client Login
 PACKETHANDLER(pakUserLogin){
-	if (SERVERTYPE != EURSERVER) {
-		Log(MSG_DEBUG, "Europe client tried connecting");
-		return false;
-	}
-
-	char username[0x12];
-	char password[0x10];
-	char md5hash[0x21];
-	md5hash[0x20] = '\0';
-
-	memcpy(username, pak->Buffer() + 3, 0x12);
-	memcpy(password, pak->Buffer() + 3 + 0x12, 0x10);
-	// Generate MD5 sum from password. This makes this function compatible with pakTokenLogin.
-	{
-		struct cvs_MD5Context context;
-		unsigned char checksum[16];
-		cvs_MD5Init(&context);
-		cvs_MD5Update(&context, (unsigned const char*)password, strlen(password));
-		cvs_MD5Final(checksum, &context);
-		for (int i = 0; i < 16; i++)
-			sprintf_s(md5hash + (i*2), 3, "%02x", checksum[i]);
-	}
-
-	thisclient->username = db->MakeSQLSafe(username);
-	thisclient->password = _strdup(md5hash);
-	if(_strcmpi(thisclient->username, username)){
-		Log(MSG_DEBUG, "MySql Safe login %s != %s", thisclient->username, username);
-		return false;
-	}
-	MYSQL_RES* result = db->DoSQL("SELECT `id`,`password`,`accesslevel` FROM `users` WHERE `username`='%s'", thisclient->username);
-	if(!result || mysql_num_rows(result) != 1){
-		Log(MSG_DEBUG, "SELECT returned bollocks");
-		goto authFail;
-	}
-	
-	MYSQL_ROW row = mysql_fetch_row(result);
-	if(strcmp(row[1], (const char*)thisclient->password) != 0){
-		Log(MSG_DEBUG, "Incorrect password");
-		goto authFail;
-	}
-
-	thisclient->id = atoi(row[0]);
-	thisclient->accesslevel = atoi(row[2]);
-
-	if(thisclient->accesslevel < 1){
-		Log(MSG_DEBUG, "thisclient->accesslevel < 1");
-		thisclient->id = -1;
-		goto authFail;
-	}
-
-	Log(MSG_DEBUG, "User %s authenticated", username);
-
-	{
-		CPacket pakout(0xC0A);
-		rwmServerList.acquireReadLock();
-		pakout.Add<byte>(ServerList.size());
-		dword serverCount = 0;
-		for(dword i = 0; i < ServerList.size(); i++){
-			if (ServerList[i]->type != 2) continue;
-			pakout.Add<byte>(ServerList[i]->id);
-			pakout.AddFixLenStr(ServerList[i]->name, 0x10);
-			pakout.Add<byte>(ServerList[i]->status);
-			serverCount++;
-		}
-		rwmServerList.releaseReadLock();
-		pakout.Set<byte>(serverCount, 0x00);
-		SendPacket(thisclient, &pakout);
-	}
-
-	/*
-	STATUS
-	0 = offline
-	1 = maitanence
-	2 = off
-	3 = off
-	4 = off
-	5 = high
-	6 = low
-	7 = low
-	8 = low
-	9 = low
-	10 = medium
-	*/
-	db->QFree(result);
-	return true;
-authFail:
-	{
+	Log(MSG_DEBUG, "Europe client tried connecting.");
+	// Tell the user their connection failed.
 		CPacket pakout(0x0C09);
-		pakout.Add<word>(0x44);
+	pakout.Add<word>(0x4a);
 		SendPacket(thisclient, &pakout);
-	}
-	db->QFree(result);
 	return true;
 }
 
@@ -329,6 +238,7 @@ void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 				delete tempData;
 				break;
 			}
+			tempData->status = 6;
 			rwmServerList.acquireWriteLock();
 			ServerList.push_back( tempData );
 			rwmServerList.releaseWriteLock();
@@ -366,9 +276,10 @@ void CLoginServer::ReceivedISCPacket( CISCPacket* pak ){
 				if(!dat) continue;
 				if(dat->iscid == iscid){ 
 					dat->currentusers = pak->Read<dword>();
-					// Status is 8-10 for low-high
+					// Status is 6-10 for low-high
+					dat->status = 6;
 					if (dat->maxusers != 0)
-						dat->status = floor((double)(dat->currentusers / dat->maxusers) * 3) + 8;
+						dat->status = ceil((double)(dat->currentusers / dat->maxusers) * 4) + 6;
 					break; 
 				}
 			}

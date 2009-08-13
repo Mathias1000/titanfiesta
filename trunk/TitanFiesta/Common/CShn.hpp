@@ -6,6 +6,7 @@
 
 #include <map>
 #include <vector>
+#include <string>
 
 #define ReadDword() dataRead<dword>(data, &readPos);
 #define ReadWord() dataRead<word>(data, &readPos);
