@@ -74,7 +74,7 @@ BEGIN_MESSAGE_MAP(CDlg, CDialog)
 END_MESSAGE_MAP()
 
 bool isReady = false;
-CSHN* curFile = NULL;
+CShn* curFile = NULL;
 // CDlg message handlers
 void CDlg::OnSize(UINT nType, int cx, int cy){
 	CDialog::OnSize(nType, cx, cy);
@@ -166,27 +166,33 @@ void CDlg::OnFileOpen(){
 	if( FileDlg.DoModal() != IDOK ) return;
 
 	BSTR fileTitle = FileDlg.GetFileTitle().AllocSysString();
-	BSTR fileName = FileDlg.GetFileName().AllocSysString();
+	BSTR fileName = (FileDlg.GetFolderPath() + "\\" + FileDlg.GetFileName()).AllocSysString();
+
 	char temp2[64];
 	char tempPath[MAX_PATH];
 	wcstombs_s(NULL, temp2, 64, fileTitle, 64);
 	sprintf_s(tempPath, MAX_PATH, "%s - SHN Editor", temp2);
 	SetWindowText(tempPath);	
 	wcstombs_s(NULL, tempPath, MAX_PATH, fileName, MAX_PATH);
-	DEL(curFile);
-	curFile = new CSHN();
-	curFile->Open(tempPath);
 	SysFreeString(fileName);
+	SysFreeString(fileTitle);
+
+	DEL(curFile);
+	curFile = new CShn();
+	if (!curFile->Open(tempPath)) {
+		MessageBoxA("There was an error loading the SHN.", "ERROR LOADING SHN");
+		return;
+	}
 
 	lstData.DeleteAllItems();
 	lstData.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
 	char temp[64];
-	for(dword i = 0; i < curFile->columns.size(); i++){
-		CSHN::SSHNColumn* curCol = curFile->columns[i];
-		sprintf_s(temp, 64, "%s [%d]", curCol->name, curCol->type);
+	for(dword i = 0; i < curFile->ColCount(); i++){
+		CShnColumn* curCol = curFile->Column(i);
+		sprintf_s(temp, 64, "%s [%d] [%d]", curCol->name, curCol->type, curCol->columnSize);
 		lstData.InsertColumn(i, temp, LVCFMT_LEFT, 100);
 	}
 
-	lstData.SetItemCount(curFile->rows.size());
+	lstData.SetItemCount(curFile->RowCount());
 }

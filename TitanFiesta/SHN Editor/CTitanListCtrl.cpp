@@ -40,8 +40,8 @@ BOOL CTitanListCtrl::EnsureSubItemVisible(int nItem, int nSubItem, CRect *pRect)
 
 void CTitanListCtrl::ShowColumnInHex(){
 	if(curFile == NULL) return;
-	curFile->columns[curEditColumn]->showInHex = !curFile->columns[curEditColumn]->showInHex;
-	RedrawItems(0, curFile->rows.size());
+//	curFile->columns[curEditColumn]->showInHex = !curFile->columns[curEditColumn]->showInHex;
+//	RedrawItems(0, curFile->rows.size());
 }
 
 void CTitanListCtrl::OnContextMenu(CWnd* pWnd, CPoint point){
@@ -80,10 +80,10 @@ BOOL CTitanListCtrl::DisplayEditor(int nItem, int nSubItem){
 }
 
 void CTitanListCtrl::HideEditor(){
-	if(curFile == NULL) return;
-	CSHN::SSHNRow* curRow = curFile->rows[nCurEditItem];
-	CSHN::SSHNRowData* curData = curRow->data[nCurEditSubItem];
-	CSHN::SSHNColumn* curCol = curFile->columns[nCurEditSubItem];
+/*	if(curFile == NULL) return;
+	CShnRow* curRow = curFile->Row(nCurEditItem);
+	CShnData* curData = curRow->data[nCurEditSubItem];
+	CShnColumn* curCol = curFile->Column(nCurEditSubItem);
 
 	CString wndTxt;
 	m_wndEdit.GetWindowText(wndTxt);
@@ -106,7 +106,7 @@ void CTitanListCtrl::HideEditor(){
 			curData->data = new byte[wndTxt.GetLength() + 1];
 			strcpy_s(reinterpret_cast<char*>(curData->data), wndTxt.GetLength() + 1, wndTxt);
 		break;
-	}
+	}*/
 	m_wndEdit.ShowWindow(false);
 }
 
@@ -143,36 +143,36 @@ void CTitanListCtrl::OnGetdispinfoList(NMHDR* pNMHDR, LRESULT* pResult){
 	int itemid = pItem->iItem;
 	if(pItem->mask & LVIF_TEXT && curFile != NULL){
 		CString text;
-		if(pItem->iItem >= curFile->rows.size()) return;
-		if(pItem->iSubItem >= curFile->columns.size()) return;
-		CSHN::SSHNRow* curRow = curFile->rows[pItem->iItem];
-		CSHN::SSHNRowData* curData = curRow->data[pItem->iSubItem];
-		CSHN::SSHNColumn* curCol = curFile->columns[pItem->iSubItem];
+		if(pItem->iItem >= curFile->RowCount()) return;
+		if(pItem->iSubItem >= curFile->ColCount()) return;
+		CShnRow* curRow = curFile->Row(pItem->iItem);
+		CShnData* curData = curRow->cells[pItem->iSubItem];
+		CShnColumn* curCol = curFile->Column(pItem->iSubItem);
 		switch(curCol->type){
 			case 1:
-				if(!curCol->showInHex)
-					sprintf_s(pItem->pszText, pItem->cchTextMax, "%d", curData->data[0]);
-				else
-					sprintf_s(pItem->pszText, pItem->cchTextMax, "%02x", curData->data[0]);
+				//if(!curCol->showInHex)
+					sprintf_s(pItem->pszText, pItem->cchTextMax, "%d", curData->btData);
+				/*else
+					sprintf_s(pItem->pszText, pItem->cchTextMax, "%02x", curData->data[0]);*/
 			break;
 			case 2:
-				if(!curCol->showInHex)
-					sprintf_s(pItem->pszText, pItem->cchTextMax, "%d", *reinterpret_cast<word*>(curData->data));
-				else
-					sprintf_s(pItem->pszText, pItem->cchTextMax, "%04x", *reinterpret_cast<word*>(curData->data));
+				//if(!curCol->showInHex)
+					sprintf_s(pItem->pszText, pItem->cchTextMax, "%d", curData->wData);
+				/*else
+					sprintf_s(pItem->pszText, pItem->cchTextMax, "%04x", *reinterpret_cast<word*>(curData->data));*/
 			break;
 			case 3:
 			case 11:
 			case 18:
 			case 27:
-				if(!curCol->showInHex)
-					sprintf_s(pItem->pszText, pItem->cchTextMax, "%d", *reinterpret_cast<dword*>(curData->data));
-				else
-					sprintf_s(pItem->pszText, pItem->cchTextMax, "%08x", *reinterpret_cast<dword*>(curData->data));
+				//if(!curCol->showInHex)
+					sprintf_s(pItem->pszText, pItem->cchTextMax, "%d", curData->dwData);
+				/*else
+					sprintf_s(pItem->pszText, pItem->cchTextMax, "%08x", *reinterpret_cast<dword*>(curData->data));*/
 			break;
 			case 9:
 			case 26:
-				sprintf_s(pItem->pszText, pItem->cchTextMax, "%s", reinterpret_cast<char*>(curData->data));
+				sprintf_s(pItem->pszText, pItem->cchTextMax, "%s", curData->strData);
 			break;
 		}
 	}

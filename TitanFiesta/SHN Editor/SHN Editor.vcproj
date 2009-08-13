@@ -264,6 +264,14 @@
 					>
 				</File>
 			</Filter>
+			<Filter
+				Name="Common"
+				>
+				<File
+					RelativePath="..\Common\CShn.hpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Resource Files"

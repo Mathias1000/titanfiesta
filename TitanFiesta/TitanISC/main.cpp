@@ -7,9 +7,10 @@
 
 int main(int argc, char* argv[]) 
 {
+	CTitanIniReader ini("ISCServer.ini");
 	CTitanISC server;
-	server.Config.BindIp = TITAN_DEFAULT_ISC_IP;
-	server.Config.BindPort = TITAN_DEFAULT_ISC_PORT;
+	server.Config.BindIp = ini.GetString("IP","ISC Server",TITAN_DEFAULT_ISC_IP);
+	server.Config.BindPort = ini.GetInt("Port","ISC Server",TITAN_DEFAULT_ISC_PORT);
 
 	server.Start();
 	return 0;

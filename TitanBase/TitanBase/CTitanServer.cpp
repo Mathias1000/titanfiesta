@@ -51,8 +51,7 @@ bool CTitanServer::Start(){
 	}
 
 	if(Config.BindIp == NULL){
-		Log(MSG_ERROR, "Binding IP was not set.");
-		return false;
+		Log(MSG_WARNING, "Binding IP was not set. Listening on all interfaces.");
 	}
 	
 	ain.sin_family = AF_INET;
