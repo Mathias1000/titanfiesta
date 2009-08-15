@@ -53,7 +53,7 @@ public:
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 		curl_easy_perform(curl);
 		
-		if(strstr(chunk.memory, "token") == NULL){
+		if(chunk.memory == NULL || strstr(chunk.memory, "token") == NULL){
 			Log(MSG_ERROR, "Could not acquire token from outspark!");
 			curl_easy_cleanup(curl);
 			return false;

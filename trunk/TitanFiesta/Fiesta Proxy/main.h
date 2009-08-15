@@ -26,8 +26,6 @@ bool ReceivedLoginClientPacket(CPacket* pak, CConnectClient* login);
 bool ReceivedWorldClientPacket(CPacket* pak, CConnectClient* world);
 bool ReceivedGameClientPacket(CPacket* pak, CConnectClient* game);
 
-bool HandleCommand(CPacket* pak, char* command, CConnectClient* game);
-
 #include "CPacket.hpp"
 #include "Log.hpp"
 #include "CFiestaCrypt.hpp"

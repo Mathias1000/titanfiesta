@@ -33,7 +33,7 @@ typedef enum
 	MSG_DEBUG = CC_LIGHTBLUE
 } LOG_TYPE;
 
-static boost::mutex mConsole;
+extern boost::mutex mConsole;
 
 static void SetConsoleColor( dword textcolor, dword backcolor = 0 ){
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), textcolor + (backcolor << 4));
@@ -65,7 +65,6 @@ static void LogPacket(CPacket* pak, char serv, char source){
 	fprintf(fh, "\n");
 	
 	fclose(fh);
-	lConsole.unlock();
 }
 
 static void Log( LOG_TYPE flag, char* format, ... ){
@@ -112,5 +111,4 @@ static void Log( LOG_TYPE flag, char* format, ... ){
 	fprintf(fh, "\n");
 	va_end(arglist);
 	fclose(fh);
-	lConsole.unlock();
 }
