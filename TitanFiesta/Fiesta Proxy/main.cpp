@@ -6,6 +6,8 @@
 
 CListener listener;
 
+boost::mutex mConsole;
+
 bool ReceivedLoginServerPacket(CPacket* pak, CConnectClient* login){
 	switch(pak->command){
 		case 0x0C0C:
